@@ -21,7 +21,7 @@ Regenerar: `openscad -o stl/a1_plate.stl -D 'part="a1_plate"' switch2_visera.sca
 
 ## Sujeción (pensada para PLA)
 
-10 puntos de agarre que bajan por el canto y enganchan 1 mm detrás de la consola:
+8 puntos de agarre que bajan por el canto y enganchan 1 mm detrás de la consola:
 
 - 2 dedos arriba (x = ±45 mm), lejos de power/volumen, USB-C y L/R.
 - 4 dedos abajo (±45 y ±115, este último bajo cada Joy-Con), dejando libre el USB-C central.
