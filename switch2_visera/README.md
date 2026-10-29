@@ -76,7 +76,15 @@ PETG E = 1900 MPa, 40 / 28 MPa. Margen = resistencia / tensión máxima (pico re
 excluyen los nodos a < 1,5 mm de cargas o apoyos impuestos). La visera se imprime boca abajo,
 así que la tensión entre capas es σzz del modelo.
 
-RESULTS_TABLE
+| Caso | Carga | Tensión máx. (PLA) | Margen PLA (plano / entre capas) | Margen PETG | Hundimiento → aire disponible |
+|---|---|---|---|---|---|
+| Rodilla sobre la pantalla | 300 N (~30 kg) en Ø20 mm, centro | 26,3 MPa | **1,7× / 3,8×** | ~1,5× | 0,75 mm (PETG 1,2) → 3,8 mm: no toca |
+| Rodilla sobre el stick | 300 N en Ø20 mm, capucha derecha | 33,1 MPa | **1,4× / 2,6×** | ~1,2× (dúctil) | 0,35 mm (PETG 0,55) → 2,6 mm: no toca |
+| Mochila aplastada | 500 N (~50 kg) repartidos | 12,9 MPa | **3,5× / 5,1×** | ~3,1× | 0,23 mm |
+| Poner / quitar la visera | gancho se abre 0,6 mm | 11,4 MPa entre capas | **2,2×** entre capas | **4,0×** | — |
+
+Con carga impuesta la tensión casi no depende del material y el hundimiento escala con 1/E;
+se comprobó simulando la pantalla también en PETG (28,5 vs 28,7 MPa; 0,85 vs 1,32 mm).
 
 Iteraciones que salieron de las simulaciones:
 

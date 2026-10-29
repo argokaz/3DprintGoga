@@ -107,6 +107,8 @@ def build(size, refine=None, coarse=2.2):
     gmsh.option.setNumber("Mesh.SecondOrderLinear", 1)
     gmsh.option.setNumber("Mesh.Algorithm3D", 10)
     gmsh.option.setNumber("General.NumThreads", os.cpu_count())
+    gmsh.option.setNumber("Mesh.Optimize", 1)        # elimina tetraedros astilla
+    gmsh.option.setNumber("Mesh.OptimizeNetgen", 1)
     gmsh.model.mesh.generate(3)
     nt, X, _ = gmsh.model.mesh.getNodes()
     et, _, cn = gmsh.model.mesh.getElements(3)
