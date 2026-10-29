@@ -1,48 +1,93 @@
-# Visera frontal ultraligera — Nintendo Switch 2
+# Visera frontal reforzada — Nintendo Switch 2
 
-Tapa frontal que protege la pantalla y evita que los joysticks se aplasten en la mochila.
-Una "capucha" cubre cada Joy-Con 2 completo, así la posición exacta del stick no importa.
-Toda la presión se apoya en el borde exterior y en el marco de la tablet, nunca en sticks ni pantalla.
+Tapa frontal de una pieza que protege la pantalla y evita que los joysticks se aplasten
+en la mochila. Una "capucha" hueca cubre cada Joy-Con 2 entero, así la posición exacta
+del stick no importa (Nintendo no la publica). Toda la presión se apoya en el borde
+exterior y en el marco de la tablet, nunca en sticks ni pantalla.
+
+Diseño validado por elementos finitos (ver [Simulaciones](#simulaciones)).
 
 ![vista](img/full.png)
 
 ## Archivos
 
-| STL | Uso | Peso PLA |
+| Archivo | Uso | Peso PLA / PETG |
 |---|---|---|
-| `stl/test_clip.stl` | Probar holgura y dedos de agarre (imprímelo primero) | ~11 g |
-| `stl/test_hood.stl` | Probar capucha sobre el stick + abrazadera del extremo | ~13 g |
-| `stl/a1_diag.stl` | **Bambu A1: visera de UNA pieza**, ya girada 45° y boca abajo (249,6 × 249,6 mm) | ~52 g |
-| `stl/full.stl` | La misma visera sin girar (para mirarla o para camas ≥ 280 mm) | ~52 g |
+| `visera_switch2_A1_PETG.3mf` | **Recomendado.** Proyecto Bambu Studio listo: A1 0.4, PETG HF, placa PEI texturizada | — / ~173 g |
+| `visera_switch2_A1_PLA.3mf` | Igual con PLA Basic | ~169 g / — |
+| `stl/test_clip.stl` | Probar holgura y dedos de agarre (imprímelo primero) | ~19 g |
+| `stl/test_hood.stl` | Probar capucha sobre el stick + abrazadera del extremo | ~30 g |
+| `stl/a1_diag.stl` | Visera de una pieza ya girada 45° y boca abajo (249,6 × 249,6 mm) | ~169 / 173 g |
+| `stl/full.stl` | La misma visera sin girar (para mirarla o para camas ≥ 280 mm) | ~169 / 173 g |
+
+Los 3MF llevan: capa 0,2 mm, 4 paredes, gyroid 25 %, 5/4 capas sup./inf., sin soportes,
+sin brim, costura atrás. Se generan con `python3 tools/make_3mf.py stl/a1_diag.stl salida.3mf --filament pla|petg`
+a partir de los perfiles oficiales de Bambu (`tools/bbl_a1_presets.json`).
+No se han abierto en Bambu Studio desde este entorno: si algo no carga, abre `stl/a1_diag.stl`.
 
 ![plano](img/plano_diagonal.png)
 
-**Por qué cabe:** un cuadrado de 256 mm girado 45° admite piezas de hasta ~360 mm de largo
+**Por qué cabe en la A1:** un cuadrado de 256 mm girado 45° admite piezas de hasta ~360 mm
 si las esquinas están redondeadas. Por eso las esquinas de la visera tienen radio ~35 mm
-(`cover_r`, calculado solo a partir de `bed`). En cada esquina queda al aire un pequeño
-triángulo de la cara frontal, donde no hay botones; los sticks quedan cubiertos con ~8 mm
-de margen aunque su posición real varíe ±5 mm.
+(`cover_r`, calculado a partir de `bed`). En cada esquina queda al aire un pequeño triángulo
+de la cara frontal, donde no hay botones.
 
 Regenerar: `openscad -o stl/a1_diag.stl switch2_visera.scad`
-(`part` = `a1_diag | full | test_clip | test_hood`; `left | right` siguen disponibles si algún día hace falta dividirla).
+(`part` = `a1_diag | full | test_clip | test_hood | left | right`).
 
-## Sujeción (pensada para PLA)
+## Estructura
+
+- **Sobre la pantalla:** piel maciza de 1,4 mm + panal hexagonal de 10,6 mm de profundidad
+  por dentro. Fuera de la pantalla los nervios bajan en rampa de 45° hasta el apoyo (sin esquinas vivas).
+  Quedan 3,8 mm de aire hasta la pantalla.
+- **Capuchas:** techo de 2,6 mm + panal de 3,4 mm (nervios de 1,8 mm) + refuerzo a 45° en la
+  pared de apoyo. Quedan 2,6 mm de aire sobre la punta del stick (stick estimado en 7,2 mm).
+- **Grosor total** con la consola: 31,7 mm.
+
+## Sujeción
 
 8 puntos de agarre que bajan por el canto y enganchan 1 mm detrás de la consola:
 
 - 2 dedos arriba (x = ±45 mm), lejos de power/volumen, USB-C y L/R.
 - 4 dedos abajo (±40 y ±95), dejando libre el USB-C central.
 - 2 abrazaderas de 40 mm que envuelven los extremos redondeados de los Joy-Con.
-- Ranuras a los lados de cada dedo para que flexione en toda su longitud: deformación ~1 %, segura en PLA.
+- Cada dedo arranca casi arriba de la pared (`finger_root_z`), con redondeo en la raíz y
+  agujeros de alivio al final de las ranuras: así flexiona a lo largo de ~26 mm con poca tensión.
 
 Si queda floja, sube `clip_hook` a 1.2; si cuesta mucho, bájalo a 0.8 o sube `tol`.
 
-## Impresión (Bambu A1, PLA)
+**Imanes (opcional, experimental):** `magnets = true` añade 4 alojamientos para imanes de
+6 × 2 mm sobre la junta Joy-Con/tablet, donde la consola tiene sus propios imanes. Prueba antes
+con un imán suelto que se pegue y que la consola no reaccione (reposo, detección de mandos).
 
-- `a1_diag.stl` ya viene orientado (45°, cara exterior sobre la cama): **no lo gires** en Bambu Studio, **sin soportes**.
-- 0,2 mm de capa, 3 paredes, relleno 15 % (casi todo son paredes macizas de 1,2–1,6 mm).
-- Ojo: el PLA se deforma por encima de ~55 °C (coche al sol). Para eso, PETG.
+## Impresión
+
+- El 3MF / `a1_diag.stl` ya viene orientado (45°, cara exterior sobre la cama): **no lo gires**, **sin soportes**.
+- **PETG recomendado** para la mochila: más tenaz (se dobla en vez de partirse), aguanta ~75–80 °C
+  (PLA ~55 °C) y se deforma menos con presión continua.
 - Para quitarla: tira primero de una abrazadera de un extremo.
+
+## Simulaciones
+
+FEA lineal con CalculiX (tetraedros cuadráticos C3D10, malla gmsh), en `sim/`:
+`sim/run_all.sh` ejecuta todos los casos; `sim/fea.py <caso> <material>` uno.
+Material impreso conservador: PLA E = 3000 MPa, 45 MPa en el plano, 25 MPa entre capas;
+PETG E = 1900 MPa, 40 / 28 MPa. Margen = resistencia / tensión máxima (pico real, solo se
+excluyen los nodos a < 1,5 mm de cargas o apoyos impuestos). La visera se imprime boca abajo,
+así que la tensión entre capas es σzz del modelo.
+
+RESULTS_TABLE
+
+Iteraciones que salieron de las simulaciones:
+
+1. Dedos de agarre: margen entre capas 1,2× → raíz alta, redondeo y agujeros de alivio → 2,2× (PLA).
+2. Placa de 1,2 mm sobre la pantalla: con 30 kg se hundía hasta tocarla → panel nervado profundo.
+3. Esquinas vivas nervio/pared → rampas de 45° y refuerzos.
+4. Techo de capucha de 2 mm: 51 MPa → panal bajo el techo y techo de 2,6 mm.
+
+Limitaciones: análisis lineal y estático (no simula impactos ni fatiga), contacto con la
+consola modelado como apoyo simple, propiedades de material genéricas. Las medidas de la
+consola son en parte estimadas: imprime los probadores antes.
 
 ## Medidas usadas
 
@@ -63,9 +108,9 @@ Si queda floja, sube `clip_hook` a 1.2; si cuesta mucho, bájalo a 0.8 o sube `t
 | Borde inferior | Altavoz, USB-C central, altavoz | Diagrama Nintendo / iFixit | Media-alta |
 | Radio de esquinas | no publicado (se usa 11) | — | Medir |
 
-Como las capuchas cubren todo el Joy-Con, la posición de sticks y botones no afecta al encaje.
-Lo que sí conviene medir con calibre: `corner_r` y que los clips (`top_clips`, `bottom_clips`, en mm desde el centro)
-no tapen la ranura de juego, el jack ni los altavoces de tu consola.
+Conviene medir con calibre `corner_r`, la altura real del stick (`stick_h`) y comprobar que los
+clips (`top_clips`, `bottom_clips`, en mm desde el centro) no tapen la ranura de juego, el jack
+ni los altavoces de tu consola.
 
 Fuentes: [Nintendo specs](https://www.nintendo.com/en-gb/Hardware/Nintendo-Switch-2/Nintendo-Switch-2-Specifications-2785627.html),
 [Joy-Con 2](https://www.nintendo.com/my/hardware/switch2/accessories/joyCon.html),
