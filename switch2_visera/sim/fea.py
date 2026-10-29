@@ -6,7 +6,6 @@ Escribe resultados en sim/out/<caso>_<material>/ y un resumen JSON.
 """
 import argparse, json, os, subprocess, sys
 import numpy as np
-import gmsh
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -34,50 +33,32 @@ stick_L = (-L/2 + 17.75, H/2 - 35)     # estimación
 stick_R = ( L/2 - 17.75, H/2 - 70)
 
 def mesh_stl(stl, size, msh):
-    """Malla tet10. Intenta reparametrizar la superficie; si la topología no lo
-    permite, malla el volumen directamente sobre la superficie STL refinada."""
-    import trimesh
-    for attempt in ("reparam", "discrete"):
-        gmsh.initialize(); gmsh.option.setNumber("General.Terminal", 0)
-        try:
-            if attempt == "reparam":
-                gmsh.merge(stl)
-                gmsh.model.mesh.classifySurfaces(np.deg2rad(30), True, True, np.pi)
-                gmsh.model.mesh.createGeometry()
-            else:
-                m = trimesh.load(stl)
-                v, f = trimesh.remesh.subdivide_to_size(m.vertices, m.faces, max_edge=size)
-                tmp = os.path.join(HERE, "out", "_refined.stl")
-                trimesh.Trimesh(v, f).export(tmp)
-                gmsh.merge(tmp)
-            s = [e[1] for e in gmsh.model.getEntities(2)]
-            l = gmsh.model.geo.addSurfaceLoop(s)
-            gmsh.model.geo.addVolume([l]); gmsh.model.geo.synchronize()
-            gmsh.option.setNumber("Mesh.MeshSizeMax", size)
-            gmsh.option.setNumber("Mesh.MeshSizeMin", size*0.4)
-            gmsh.option.setNumber("Mesh.ElementOrder", 2)
-            gmsh.option.setNumber("Mesh.HighOrderOptimize", 0)
-            gmsh.option.setNumber("Mesh.SecondOrderLinear", 1)  # nodos medios rectos: sin jacobianos negativos
-            gmsh.option.setNumber("Mesh.Algorithm3D", 10)  # HXT, multihilo
-            gmsh.option.setNumber("General.NumThreads", os.cpu_count())
-            gmsh.model.mesh.generate(3)
-            nt, xyz, _ = gmsh.model.mesh.getNodes()
-            et, tags, conn = gmsh.model.mesh.getElements(3)
-            conn = conn[list(et).index(11)].reshape(-1, 10)
-            break
-        except Exception as e:
-            print(f"malla ({attempt}) falló: {e}")
-            if attempt == "discrete": raise
-        finally:
-            gmsh.finalize()
-    xyz = xyz.reshape(-1, 3)
-    # renumera y elimina nodos sueltos de la superficie que no usa ningún tet
-    used = np.unique(conn)
-    idx = {int(t): k for k, t in enumerate(used)}
-    pos = {int(t): k for k, t in enumerate(nt)}
-    xyz = xyz[[pos[int(t)] for t in used]]
-    conn = np.vectorize(lambda t: idx[int(t)])(conn)
-    print(f"malla: {attempt}, {len(xyz)} nodos, {len(conn)} tets")
+    """Malla tet10 con gmsh: reparametriza la superficie STL y malla el volumen.
+    Nodos medios rectos (sin jacobianos negativos). Devuelve conn en orden C3D10."""
+    import gmsh
+    gmsh.initialize(); gmsh.option.setNumber("General.Terminal", 0)
+    gmsh.merge(stl)
+    gmsh.model.mesh.classifySurfaces(np.deg2rad(30), True, True, np.pi)
+    gmsh.model.mesh.createGeometry()
+    l = gmsh.model.geo.addSurfaceLoop([e[1] for e in gmsh.model.getEntities(2)])
+    gmsh.model.geo.addVolume([l]); gmsh.model.geo.synchronize()
+    gmsh.option.setNumber("Mesh.MeshSizeMax", size)
+    gmsh.option.setNumber("Mesh.MeshSizeMin", size*0.4)
+    gmsh.option.setNumber("Mesh.ElementOrder", 2)
+    gmsh.option.setNumber("Mesh.SecondOrderLinear", 1)
+    gmsh.option.setNumber("Mesh.Algorithm3D", 10)
+    gmsh.option.setNumber("General.NumThreads", os.cpu_count())
+    gmsh.model.mesh.generate(3)
+    nt, X, _ = gmsh.model.mesh.getNodes()
+    et, _, cn = gmsh.model.mesh.getElements(3)
+    gmsh.finalize()
+    pos = np.zeros(int(nt.max()) + 1, int); pos[nt.astype(int)] = np.arange(len(nt))
+    conn = pos[cn[list(et).index(11)].astype(int).reshape(-1, 10)]
+    conn = conn[:, [0, 1, 2, 3, 4, 5, 6, 7, 9, 8]]   # gmsh -> CalculiX (nodos 9/10)
+    xyz = X.reshape(-1, 3)
+    used = np.unique(conn); remap = np.zeros(len(xyz), int); remap[used] = np.arange(len(used))
+    xyz, conn = xyz[used], remap[conn]
+    print(f"malla: {len(xyz)} nodos, {len(conn)} tet10")
     return xyz, conn
 
 def write_inp(path, xyz, conn, mat, bcs, loads, disp):
@@ -85,16 +66,15 @@ def write_inp(path, xyz, conn, mat, bcs, loads, disp):
         f.write("*NODE, NSET=NALL\n")
         for k, p in enumerate(xyz): f.write(f"{k+1},{p[0]:.5f},{p[1]:.5f},{p[2]:.5f}\n")
         f.write("*ELEMENT, TYPE=C3D10, ELSET=EALL\n")
-        # gmsh tet10 -> ccx: los nodos 9 y 10 van intercambiados
         for k, c in enumerate(conn):
-            c = c[[0,1,2,3,4,5,6,7,9,8]] + 1
+            c = c + 1
             f.write(f"{k+1}," + ",".join(map(str, c)) + "\n")
         f.write(f"*MATERIAL, NAME=M\n*ELASTIC\n{mat['E']},{mat['nu']}\n*SOLID SECTION, ELSET=EALL, MATERIAL=M\n")
         for name, (nodes, dofs) in bcs.items():
             f.write(f"*NSET, NSET={name}\n"); _ids(f, nodes)
         for name, (nodes, _) in disp.items():
             f.write(f"*NSET, NSET={name}\n"); _ids(f, nodes)
-        f.write("*STEP\n*STATIC, SOLVER=PARDISO\n" if False else "*STEP\n*STATIC\n")
+        f.write("*STEP\n*STATIC, SOLVER=ITERATIVE CHOLESKY\n" if len(xyz) > 700000 else "*STEP\n*STATIC\n")
         f.write("*BOUNDARY\n")
         for name, (nodes, dofs) in bcs.items():
             for d in dofs: f.write(f"{name},{d},{d},0\n")
@@ -152,10 +132,13 @@ def run(case, matname, size):
     bcs, loads, disp, info = c["setup"](xyz)
     inp = os.path.join(out, "job.inp")
     write_inp(inp, xyz, conn, mat, bcs, loads, disp)
-    r = subprocess.run(["ccx", "-i", "job"], cwd=out, capture_output=True, text=True,
-                       env=dict(os.environ, OMP_NUM_THREADS=str(os.cpu_count())))
-    if "Job finished" not in r.stdout:
-        print(r.stdout[-2000:]); sys.exit("ccx falló")
+    for th in (os.cpu_count(), 1):   # spooles multihilo a veces muere con mallas grandes
+        r = subprocess.run(["ccx", "-i", "job"], cwd=out, capture_output=True, text=True,
+                           env=dict(os.environ, OMP_NUM_THREADS=str(th), CCX_NPROC_EQUATION_SOLVER=str(th)))
+        if "Job finished" in r.stdout: break
+        print(f"ccx con {th} hilos falló (código {r.returncode}): {r.stdout[-400:]}")
+    else:
+        sys.exit("ccx falló")
     U, S = read_frd(os.path.join(out, "job.frd"), len(xyz))
     v = vm(S); s33 = S[:, 2]
     # pico real, excluyendo solo los nodos a < 1.5 mm de cargas o apoyos impuestos
@@ -227,11 +210,11 @@ def setup_snap(delta):
 
 CASES = {
     # rodilla / codo sobre el centro de la pantalla: 300 N ≈ 30 kg sobre Ø20 mm
-    "screen_point":  dict(stl="stl/full.stl", setup=setup_point(0, 0, 300), check=check_screen),
+    "screen_point":  dict(stl="sim/sim_body.stl", setup=setup_point(0, 0, 300), check=check_screen),
     # golpe/rodilla sobre la capucha del stick derecho
-    "stick_point":   dict(stl="stl/full.stl", setup=setup_point(*stick_R, 300), check=check_stick),
+    "stick_point":   dict(stl="sim/sim_body.stl", setup=setup_point(*stick_R, 300), check=check_stick),
     # mochila aplastada: 500 N (≈ 50 kg) repartidos en toda la cara
-    "backpack_crush": dict(stl="stl/full.stl", setup=setup_pressure(500), check=check_screen),
+    "backpack_crush": dict(stl="sim/sim_body.stl", setup=setup_pressure(500), check=check_screen),
     # poner/quitar la visera: el gancho se abre lo que sobresale (clip_hook – tol)
     "snap_fit":      dict(stl="stl/test_clip.stl", setup=setup_snap(clip_hook - tol)),
 }
