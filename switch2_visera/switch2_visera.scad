@@ -22,8 +22,8 @@ console_L = 272;    // largo con Joy-Con 2
 console_H = 116;    // alto
 console_T = 13.9;   // grosor del cuerpo
 corner_r  = 11;     // radio de las esquinas exteriores (vista frontal)
-joycon_w  = 30.7;   // ancho de cada Joy-Con 2 visto de frente
-stick_h   = 9.0;    // cuánto sobresale el stick sobre la cara frontal
+joycon_w  = 35.5;   // ancho visible del Joy-Con 2 = (272 - 201 tablet) / 2
+stick_h   = 7.2;    // punta del stick sobre la cara (dbrand 6.27; 30.7-14.4-9.1 = 7.2)
 
 /* [Holguras] */
 tol        = 0.4;   // holgura perimetral
