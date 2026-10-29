@@ -12,7 +12,7 @@
 // ============================================================
 
 /* [Qué generar] */
-// full | left | right | test_clip | test_hood
+// a1_plate | full | left | right | test_clip | test_hood (incluye abrazadera del extremo)
 part = "full";
 // solid = pantalla cubierta | honeycomb = panal (más ligero) | open = solo barras (ultraligero)
 screen_style = "honeycomb";
@@ -36,12 +36,18 @@ rim       = 3.0;    // ancho del apoyo perimetral sobre el marco
 bezel_over = 5;     // cuánto entra la capucha sobre el marco de la tablet
 skirt     = 3.0;    // faldón de centrado (hacia la parte trasera)
 
-/* [Clips] */
-clip_w     = 16;
-clip_hook  = 1.0;   // cuánto engancha detrás de la consola
-clip_hook_t = 1.4;
-top_clips    = [-45, 45];  // posiciones X (centro = 0). Evita botones/ranura
-bottom_clips = [-45, 45];  // evita el USB-C central
+/* [Clips (dimensionados para PLA)] */
+// Dedos que bajan por el canto y enganchan detrás de la consola.
+// Con L≈16 mm, t=1.6 y gancho de 1 mm la deformación es ~1 %: segura en PLA.
+clip_w      = 16;
+clip_t      = 1.6;   // espesor del dedo
+clip_hook   = 1.0;   // cuánto engancha detrás de la consola (sube a 1.2 si queda floja)
+clip_hook_t = 1.6;
+slot_w      = 1.0;   // ranuras a los lados del dedo para que flexione entero
+top_clips    = [-45, 45];             // X desde el centro. Lejos de power/volumen, USB-C y L/R
+bottom_clips = [-115, -45, 45, 115];  // libre el USB-C central; ±115 = bajo cada Joy-Con
+end_clip_w   = 40;                    // abrazaderas en los extremos redondeados de los Joy-Con
+end_clips    = true;
 
 /* [Panal] */
 hex_s   = 11;       // tamaño de celda (entre caras planas)
@@ -88,7 +94,8 @@ module hex_grid(w, h, cell=hex_s) {
 module screen_cut2d() {
     m = rim + 3;
     w = 2*(B - 3);  h = iH - 2*m;
-    if (screen_style == "honeycomb")
+    if (part == "test_clip") {}  // el probador sale macizo (sin trozos sueltos)
+    else if (screen_style == "honeycomb")
         intersection() { square([w, h], center=true); hex_grid(w, h); }
     else if (screen_style == "open")
         square([w, iH - 2*bar_w], center=true);
@@ -101,18 +108,25 @@ module hood_vents2d() {
     }
 }
 
-module clip(x, top) {
-    s = top ? 1 : -1;
+// Dedo genérico en un borde recto. Marco local: el borde va según X,
+// +Y hacia fuera, la cara interior del dedo está en y = 0.
+module finger(w) {
     zb = -(console_T + tol);
-    translate([x, s*(iH/2), 0]) mirror([0, top ? 0 : 1, 0]) {
-        // lengüeta
-        translate([-clip_w/2, 0, zb - clip_hook_t]) cube([clip_w, wall, -zb + clip_hook_t + eps]);
-        // gancho con rampa para que entre a presión
-        hull() {
-            translate([-clip_w/2, -clip_hook, zb - clip_hook_t]) cube([clip_w, clip_hook + eps, 0.6]);
-            translate([-clip_w/2, 0, zb - clip_hook_t]) cube([clip_w, eps, clip_hook_t]);
-        }
+    translate([-w/2, 0, zb - clip_hook_t]) cube([w, clip_t, -zb + clip_hook_t + eps]);
+    // gancho con rampa de entrada (45°)
+    hull() {
+        translate([-w/2, -clip_hook, zb - clip_hook_t]) cube([w, clip_hook + eps, 0.5]);
+        translate([-w/2, 0, zb - clip_hook_t]) cube([w, eps, clip_hook_t + clip_hook]);
     }
+}
+module finger_slots(w) { // corta el faldón junto al dedo
+    for (sx = [-1, 1]) translate([sx*(w/2 + slot_w/2) - slot_w/2, -1, -skirt - 1]) cube([slot_w, wall + 2, skirt + 1]);
+}
+// coloca hijos en cada posición de dedo (borde superior, inferior y extremos)
+module at_clips() {
+    for (x = top_clips)    translate([x,  iH/2, 0]) children(0);
+    for (x = bottom_clips) translate([x, -iH/2, 0]) rotate([0, 0, 180]) children(0);
+    if (end_clips) for (sx = [-1, 1]) translate([sx*iL/2, 0, 0]) rotate([0, 0, -sx*90]) children(1);
 }
 
 module visera() {
@@ -120,8 +134,7 @@ module visera() {
         union() {
             // caja: cara exterior plana + paredes + faldón de centrado
             translate([0, 0, -skirt]) linear_extrude(skirt + top_z) outline(wall);
-            for (x = top_clips)    clip(x, true);
-            for (x = bottom_clips) clip(x, false);
+            at_clips() { finger(clip_w); finger(end_clip_w); }
         }
         // hueco de la consola
         translate([0, 0, -console_T - 10]) linear_extrude(console_T + 10) outline(0);
@@ -134,6 +147,7 @@ module visera() {
         // aligerado
         translate([0, 0, hood_in - 1]) linear_extrude(wall + 2) screen_cut2d();
         if (hood_vents) translate([0, 0, hood_in - 1]) linear_extrude(wall + 2) hood_vents2d();
+        at_clips() { finger_slots(clip_w); finger_slots(end_clip_w); }
         // el faldón superior no debe pisar L/R ni ZL/ZR
         translate([0, 0, -skirt - 1]) linear_extrude(skirt + 1 - eps)
             intersection() {
@@ -181,8 +195,13 @@ module test_strip(x0, x1) {
     }
 }
 
+// boca abajo (cara exterior sobre la cama) para imprimir sin soportes
+module face_down() { translate([0, 0, top_z]) rotate([180, 0, 0]) children(); }
+
 if      (part == "full")      visera();
+else if (part == "a1_plate")  // las dos mitades en una cama de 256 x 256 (Bambu A1)
+    for (sd = [-1, 1]) translate([sd*(iH/2 + wall + 4), 0, 0]) rotate([0, 0, 90]) translate([-sd*(iL/4 + wall/2), 0, 0]) face_down() half(sd);
 else if (part == "left")      half(-1);
 else if (part == "right")     half(1);
 else if (part == "test_clip") test_strip(25, 65);
-else if (part == "test_hood") test_strip(console_L/2 - joycon_w - bezel_over - 8, console_L/2 + 5);
+else if (part == "test_hood") test_strip(B - 1.5, console_L/2 + 5);
