@@ -11,20 +11,27 @@ Toda la presión se apoya en el borde exterior y en el marco de la tablet, nunca
 | STL | Uso | Peso PLA |
 |---|---|---|
 | `stl/test_clip.stl` | Probar holgura y dedos de agarre (imprímelo primero) | ~11 g |
-| `stl/test_hood.stl` | Probar capucha sobre el stick + abrazadera del extremo | ~14 g |
-| `stl/a1_plate.stl` | **Bambu A1**: las dos mitades ya boca abajo en una cama de 256 mm (247 × 138 mm) | ~61 g |
-| `stl/left.stl` + `stl/right.stl` | Las mitades por separado (orientación de modelado) | ~31 g c/u |
-| `stl/full.stl` | Visera entera, solo para camas ≥ 280 mm | ~55 g |
+| `stl/test_hood.stl` | Probar capucha sobre el stick + abrazadera del extremo | ~13 g |
+| `stl/a1_diag.stl` | **Bambu A1: visera de UNA pieza**, ya girada 45° y boca abajo (249,6 × 249,6 mm) | ~52 g |
+| `stl/full.stl` | La misma visera sin girar (para mirarla o para camas ≥ 280 mm) | ~52 g |
 
-Regenerar: `openscad -o stl/a1_plate.stl -D 'part="a1_plate"' switch2_visera.scad`
-(`part` = `a1_plate | full | left | right | test_clip | test_hood`, `screen_style` = `solid | honeycomb | open`).
+![plano](img/plano_diagonal.png)
+
+**Por qué cabe:** un cuadrado de 256 mm girado 45° admite piezas de hasta ~360 mm de largo
+si las esquinas están redondeadas. Por eso las esquinas de la visera tienen radio ~35 mm
+(`cover_r`, calculado solo a partir de `bed`). En cada esquina queda al aire un pequeño
+triángulo de la cara frontal, donde no hay botones; los sticks quedan cubiertos con ~8 mm
+de margen aunque su posición real varíe ±5 mm.
+
+Regenerar: `openscad -o stl/a1_diag.stl switch2_visera.scad`
+(`part` = `a1_diag | full | test_clip | test_hood`; `left | right` siguen disponibles si algún día hace falta dividirla).
 
 ## Sujeción (pensada para PLA)
 
 8 puntos de agarre que bajan por el canto y enganchan 1 mm detrás de la consola:
 
 - 2 dedos arriba (x = ±45 mm), lejos de power/volumen, USB-C y L/R.
-- 4 dedos abajo (±45 y ±115, este último bajo cada Joy-Con), dejando libre el USB-C central.
+- 4 dedos abajo (±40 y ±95), dejando libre el USB-C central.
 - 2 abrazaderas de 40 mm que envuelven los extremos redondeados de los Joy-Con.
 - Ranuras a los lados de cada dedo para que flexione en toda su longitud: deformación ~1 %, segura en PLA.
 
@@ -32,10 +39,8 @@ Si queda floja, sube `clip_hook` a 1.2; si cuesta mucho, bájalo a 0.8 o sube `t
 
 ## Impresión (Bambu A1, PLA)
 
-- `a1_plate.stl` ya viene orientado: cara exterior sobre la cama, **sin soportes**.
+- `a1_diag.stl` ya viene orientado (45°, cara exterior sobre la cama): **no lo gires** en Bambu Studio, **sin soportes**.
 - 0,2 mm de capa, 3 paredes, relleno 15 % (casi todo son paredes macizas de 1,2–1,6 mm).
-- Unión de las mitades: pegamento (cianoacrilato) en la pestaña central + 3 tornillos M2×8 con tuerca
-  (o trozos de filamento de 1,75 mm pegados en los agujeros).
 - Ojo: el PLA se deforma por encima de ~55 °C (coche al sol). Para eso, PETG.
 - Para quitarla: tira primero de una abrazadera de un extremo.
 

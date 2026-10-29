@@ -12,8 +12,8 @@
 // ============================================================
 
 /* [Qué generar] */
-// a1_plate | full | left | right | test_clip | test_hood (incluye abrazadera del extremo)
-part = "full";
+// a1_diag | a1_plate | full | left | right | test_clip | test_hood (incluye abrazadera del extremo)
+part = "a1_diag";
 // solid = pantalla cubierta | honeycomb = panal (más ligero) | open = solo barras (ultraligero)
 screen_style = "honeycomb";
 
@@ -45,7 +45,7 @@ clip_hook   = 1.0;   // cuánto engancha detrás de la consola (sube a 1.2 si qu
 clip_hook_t = 1.6;
 slot_w      = 1.0;   // ranuras a los lados del dedo para que flexione entero
 top_clips    = [-45, 45];             // X desde el centro. Lejos de power/volumen, USB-C y L/R
-bottom_clips = [-115, -45, 45, 115];  // libre el USB-C central; ±115 = bajo cada Joy-Con
+bottom_clips = [-95, -40, 40, 95];    // libre el USB-C central
 end_clip_w   = 40;                    // abrazaderas en los extremos redondeados de los Joy-Con
 end_clips    = true;
 
@@ -56,6 +56,14 @@ bar_w   = 14;       // ancho de barras en el estilo "open"
 // panal pequeño en el techo de las capuchas (celdas < stick, no entra nada)
 hood_vents = true;
 vent_s  = 7;
+
+/* [Impresión en diagonal (una sola pieza en camas de 256 mm)] */
+// La visera se imprime girada 45°. Para que quepa, las esquinas de la
+// visera se redondean más que las de la consola (solo dejan al aire un
+// triángulo en cada esquina, donde no hay botones en la cara frontal).
+diag_print = true;
+bed        = 256;   // Bambu A1 (el A1 mini, 180 mm, no sirve)
+bed_margin = 3;
 
 /* [División para camas pequeñas] */
 flange_t = 2.4;     // pestaña de unión
@@ -70,6 +78,19 @@ hood_in  = stick_h + stick_clear;      // altura interior de la capucha
 top_z = hood_in + wall;                // cara exterior plana
 B = console_L/2 - joycon_w - bezel_over;   // |x| donde empieza la capucha
 eps = 0.01;
+
+// radio de esquina de la visera necesario para caber a 45° en la cama
+ox = iL/2 + wall;  oy = iH/2 + wall;
+diag_lim = (bed - 2*bed_margin) / sqrt(2);          // |x| + |y| <= diag_lim
+cover_r  = diag_print ? max(corner_r + wall, (ox + oy - diag_lim) / (2 - sqrt(2)) + 0.5) : corner_r + wall;
+
+// contorno de la visera (contorno de la consola ∩ esquinas grandes), desplazado d
+module cover2d(d=0) {
+    intersection() {
+        outline(d);
+        offset(r=cover_r - wall + d) square([2*ox - 2*cover_r, 2*oy - 2*cover_r], center=true);
+    }
+}
 
 // contorno frontal desplazado d mm
 module outline(d=0) {
@@ -103,7 +124,7 @@ module screen_cut2d() {
 
 module hood_vents2d() {
     intersection() {
-        offset(r=-3) intersection() { outline(-wall); halfplane_out(B + wall); }
+        offset(r=-3) intersection() { cover2d(-wall); halfplane_out(B + wall); }
         hex_grid(iL, iH, vent_s);
     }
 }
@@ -133,17 +154,17 @@ module visera() {
     difference() {
         union() {
             // caja: cara exterior plana + paredes + faldón de centrado
-            translate([0, 0, -skirt]) linear_extrude(skirt + top_z) outline(wall);
+            translate([0, 0, -skirt]) linear_extrude(skirt + top_z) cover2d(wall);
             at_clips() { finger(clip_w); finger(end_clip_w); }
         }
         // hueco de la consola
         translate([0, 0, -console_T - 10]) linear_extrude(console_T + 10) outline(0);
         // aire interior (sticks y pantalla), deja las paredes de apoyo en x = ±B
         translate([0, 0, screen_gap]) linear_extrude(hood_in - screen_gap)
-            difference() { outline(-wall); for (s=[-1,1]) translate([s*(B + wall/2), 0]) square([wall, 1000], center=true); }
+            difference() { cover2d(-wall); for (s=[-1,1]) translate([s*(B + wall/2), 0]) square([wall, 1000], center=true); }
         // apoyo perimetral sobre el marco (ancho 'rim') y paredes x = ±B hasta la cara
         linear_extrude(screen_gap + eps)
-            difference() { outline(-rim); for (s=[-1,1]) translate([s*(B + wall/2), 0]) square([wall, 1000], center=true); }
+            difference() { cover2d(-rim); for (s=[-1,1]) translate([s*(B + wall/2), 0]) square([wall, 1000], center=true); }
         // aligerado
         translate([0, 0, hood_in - 1]) linear_extrude(wall + 2) screen_cut2d();
         if (hood_vents) translate([0, 0, hood_in - 1]) linear_extrude(wall + 2) hood_vents2d();
@@ -199,6 +220,7 @@ module test_strip(x0, x1) {
 module face_down() { translate([0, 0, top_z]) rotate([180, 0, 0]) children(); }
 
 if      (part == "full")      visera();
+else if (part == "a1_diag")   rotate([0, 0, 45]) face_down() visera();   // una pieza, lista para la A1
 else if (part == "a1_plate")  // las dos mitades en una cama de 256 x 256 (Bambu A1)
     for (sd = [-1, 1]) translate([sd*(iH/2 + wall + 4), 0, 0]) rotate([0, 0, 90]) translate([-sd*(iL/4 + wall/2), 0, 0]) face_down() half(sd);
 else if (part == "left")      half(-1);
