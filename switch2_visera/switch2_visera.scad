@@ -62,7 +62,7 @@ core_rib = 1.4;     // espesor de sus nervios
 // de 45° hasta el apoyo, sin esquinas vivas (FEA)
 hood_rib_h = 3.4;   // panal bajo el techo de las capuchas (deja stick_clear - 3.4 mm sobre el stick)
 hood_rib_t = 1.8;   // espesor de sus nervios
-hood_gusset = 3.0;  // refuerzo a 45° techo/pared de apoyo
+hood_gusset = 5.5;  // refuerzo a 45° techo/pared de apoyo (cubre el borde inferior del panal)
 screen_hw = 88.5;
 screen_hh = 50;
 
