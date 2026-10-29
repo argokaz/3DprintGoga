@@ -53,14 +53,15 @@ end_clip_w   = 40;                    // abrazaderas en los extremos redondeados
 end_clips    = true;
 
 /* [Rigidez (validada por FEA, ver sim/)] */
-hood_t  = 2.0;      // techo de las capuchas sobre los sticks
+hood_t  = 2.6;      // techo de las capuchas sobre los sticks
 skin_t  = 1.4;      // piel exterior sobre la pantalla (1.4: FEA, rodilla de 30 kg)
-rib_h   = 10.0;     // profundidad del panal interior sobre la pantalla (deja 3.8 mm de aire)
+rib_h   = 10.6;     // profundidad del panal interior sobre la pantalla (deja 3.8 mm de aire)
 core_s  = 14;       // celda del panal interior (entre caras planas)
 core_rib = 1.4;     // espesor de sus nervios
 // zona de pantalla (estimada +1 mm): fuera de ella los nervios bajan en rampa
 // de 45° hasta el apoyo, sin esquinas vivas (FEA)
-hood_rib_h = 3.0;   // panal bajo el techo de las capuchas (deja stick_clear - 3 mm sobre el stick)
+hood_rib_h = 3.4;   // panal bajo el techo de las capuchas (deja stick_clear - 3.4 mm sobre el stick)
+hood_rib_t = 1.8;   // espesor de sus nervios
 hood_gusset = 3.0;  // refuerzo a 45° techo/pared de apoyo
 screen_hw = 88.5;
 screen_hh = 50;
@@ -162,7 +163,7 @@ module hood_ribs() {
     translate([0, 0, hood_in - hood_rib_h]) linear_extrude(hood_rib_h + eps)
         intersection() {
             offset(delta=eps) hood_zone2d();
-            difference() { square([iL, iH], center=true); hex_grid(iL, iH, core_s, core_rib); }
+            difference() { square([iL, iH], center=true); hex_grid(iL, iH, core_s + core_rib - hood_rib_t, hood_rib_t); }
         }
     intersection() {
         linear_extrude(top_z) cover2d(-wall + eps);

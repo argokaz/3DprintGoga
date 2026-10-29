@@ -15,7 +15,7 @@ hood_in = P("stick_h") + P("stick_clear"); top_z = hood_in + P("hood_t")
 skin_t, rib_h, core_s, core_rib, screen_gap = P("skin_t"), P("rib_h"), P("core_s"), P("core_rib"), P("screen_gap")
 bed, margin, corner_r = P("bed"), P("bed_margin"), P("corner_r")
 screen_hw, screen_hh = P("screen_hw"), P("screen_hh")
-hood_rib_h, hood_gusset = P("hood_rib_h"), P("hood_gusset")
+hood_rib_h, hood_gusset, hood_rib_t = P("hood_rib_h"), P("hood_gusset"), P("hood_rib_t")
 iL, iH = L + 2*tol, H + 2*tol
 ox, oy = iL/2 + wall, iH/2 + wall
 diag = (bed - 2*margin) / math.sqrt(2)
@@ -56,8 +56,19 @@ def build(size, refine=None, coarse=2.2):
     for sx in (-1, 1):
         x0, x1 = (B + wall, ox + 1) if sx > 0 else (-ox - 1, -B - wall)
         hslab += occ.intersect(prism(-wall + 0.01, hood_in - hood_rib_h, hood_in + 0.01), box(x0, x1, -500, 500, -1, 100))[0]
-    slab = slab + hslab
+    # mismas celdas, nervio más grueso en las capuchas (como hood_ribs() del .scad)
+    Rh = (core_s + core_rib - hood_rib_t)/math.sqrt(3)
+    hholes = []
+    for i in range(-int(ox/dx) - 2, int(ox/dx) + 3):
+        for j in range(-int(oy/p) - 2, int(oy/p) + 3):
+            cx, cy = i*dx, j*p + (p/2 if i % 2 else 0)
+            if abs(cx) < B - 2*p: continue
+            pts = [occ.addPoint(cx + Rh*math.cos(k*math.pi/3), cy + Rh*math.sin(k*math.pi/3), hood_in - hood_rib_h - 1) for k in range(6)]
+            f = occ.addPlaneSurface([occ.addCurveLoop([occ.addLine(pts[k], pts[(k+1) % 6]) for k in range(6)])])
+            hholes += [e for e in occ.extrude([(2, f)], 0, 0, hood_rib_h + 3) if e[0] == 3]
     ribs, _ = occ.cut(slab, holes)
+    hribs, _ = occ.cut(hslab, hholes)
+    ribs = ribs + hribs
     # hueco bajo los nervios sobre la pantalla con paredes a 45° (como rib_pit() del .scad)
     d = rib_bot - screen_gap
     def rect_wire(hx, hy, z):
