@@ -14,6 +14,7 @@ joycon_w, bezel_over = P("joycon_w"), P("bezel_over")
 hood_in = P("stick_h") + P("stick_clear"); top_z = hood_in + P("hood_t")
 skin_t, rib_h, core_s, core_rib, screen_gap = P("skin_t"), P("rib_h"), P("core_s"), P("core_rib"), P("screen_gap")
 bed, margin, corner_r = P("bed"), P("bed_margin"), P("corner_r")
+screen_hw, screen_hh = P("screen_hw"), P("screen_hh")
 iL, iH = L + 2*tol, H + 2*tol
 ox, oy = iL/2 + wall, iH/2 + wall
 diag = (bed - 2*margin) / math.sqrt(2)
@@ -29,7 +30,8 @@ def prism(d, z0, z1):
     return [e for e in occ.extrude([(2, f)], 0, 0, z1 - z0) if e[0] == 3]
 def box(x0, x1, y0, y1, z0, z1): return [(3, occ.addBox(x0, y0, z0, x1-x0, y1-y0, z1-z0))]
 
-def build(size):
+def build(size, refine=None, coarse=2.2):
+    """size: tamaño de elemento; refine=(x, y, r): solo se usa size en ese entorno."""
     global occ
     gmsh.initialize(); gmsh.option.setNumber("General.Terminal", 0)
     occ = gmsh.model.occ
@@ -39,7 +41,7 @@ def build(size):
     zone, _ = occ.intersect(prism(-wall, hood_in - 0.01, top_z - skin_t), box(-B, B, -500, 500, -1, 100))
     body, _ = occ.cut(body, cav + zone)
     # panal interior: losa en la zona de pantalla menos celdas hexagonales
-    slab, _ = occ.intersect(prism(-wall + 0.01, rib_bot, top_z - skin_t + 0.01), box(-B, B, -500, 500, -1, 100))
+    slab, _ = occ.intersect(prism(-wall + 0.01, screen_gap, top_z - skin_t + 0.01), box(-B, B, -500, 500, -1, 100))
     p = core_s + core_rib; dx = p*math.sqrt(3)/2; R = core_s/math.sqrt(3)
     holes = []
     for i in range(-int(B/dx) - 2, int(B/dx) + 3):
@@ -49,10 +51,30 @@ def build(size):
             f = occ.addPlaneSurface([occ.addCurveLoop([occ.addLine(pts[k], pts[(k+1) % 6]) for k in range(6)])])
             holes += [e for e in occ.extrude([(2, f)], 0, 0, rib_h + 3) if e[0] == 3]
     ribs, _ = occ.cut(slab, holes)
+    # hueco bajo los nervios sobre la pantalla con paredes a 45° (como rib_pit() del .scad)
+    d = rib_bot - screen_gap
+    def rect_wire(hx, hy, z):
+        pts = [occ.addPoint(sx*hx, sy*hy, z) for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+        return occ.addWire([occ.addLine(pts[k], pts[(k+1) % 4]) for k in range(4)])
+    w1 = rect_wire(screen_hw, screen_hh, rib_bot)
+    w0 = rect_wire(screen_hw + d + 0.01, screen_hh + d + 0.01, screen_gap - 0.01)
+    pit = [e for e in occ.addThruSections([w0, w1], makeSolid=True, makeRuled=True) if e[0] == 3]
+    ribs, _ = occ.cut(ribs, pit)
     occ.fuse(body, ribs)
     occ.synchronize()
     vol = sum(occ.getMass(*e) for e in gmsh.model.getEntities(3))
-    gmsh.option.setNumber("Mesh.MeshSizeMax", size)
+    if refine:
+        cx, cy, r = refine
+        f = gmsh.model.mesh.field.add("Box")
+        for k, v in dict(VIn=size, VOut=coarse, XMin=cx - r, XMax=cx + r, YMin=cy - r, YMax=cy + r,
+                         ZMin=-10, ZMax=50, Thickness=15).items():
+            gmsh.model.mesh.field.setNumber(f, k, v)
+        gmsh.model.mesh.field.setAsBackgroundMesh(f)
+        for k in ("MeshSizeFromPoints", "MeshSizeFromCurvature", "MeshSizeExtendFromBoundary"):
+            gmsh.option.setNumber(f"Mesh.{k}", 0)
+        gmsh.option.setNumber("Mesh.MeshSizeMax", coarse)
+    else:
+        gmsh.option.setNumber("Mesh.MeshSizeMax", size)
     gmsh.option.setNumber("Mesh.MeshSizeMin", size*0.3)
     gmsh.option.setNumber("Mesh.ElementOrder", 2)
     gmsh.option.setNumber("Mesh.SecondOrderLinear", 1)

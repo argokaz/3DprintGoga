@@ -123,12 +123,12 @@ def run(case, matname, size):
     mat = MATS[matname]
     c = CASES[case]
     out = os.path.join(HERE, "out", f"{case}_{matname}"); os.makedirs(out, exist_ok=True)
-    msh_cache = os.path.join(HERE, "out", f"mesh_{os.path.basename(c['stl'])}_{size}.npz")
+    msh_cache = os.path.join(HERE, "out", f"mesh_{os.path.basename(c['stl'])}_{size}_{c.get('refine')}.npz")
     if os.path.exists(msh_cache):
         d = np.load(msh_cache); xyz, conn = d["xyz"], d["conn"]
     elif c["stl"] == "occ":
         sys.path.insert(0, HERE); import body_occ
-        xyz, conn = body_occ.build(size)
+        xyz, conn = body_occ.build(size, c.get("refine"))
     else:
         xyz, conn = mesh_stl(os.path.join(ROOT, c["stl"]), size, None)
         np.savez(msh_cache, xyz=xyz, conn=conn)
@@ -222,9 +222,9 @@ def setup_snap(delta):
 
 CASES = {
     # rodilla / codo sobre el centro de la pantalla: 300 N ≈ 30 kg sobre Ø20 mm
-    "screen_point":  dict(stl="occ", setup=setup_point(0, 0, 300), check=check_screen),
+    "screen_point":  dict(stl="occ", refine=(0, 0, 40), setup=setup_point(0, 0, 300), check=check_screen),
     # golpe/rodilla sobre la capucha del stick derecho
-    "stick_point":   dict(stl="occ", setup=setup_point(*stick_R, 300), check=check_stick),
+    "stick_point":   dict(stl="occ", refine=(*stick_R, 35), setup=setup_point(*stick_R, 300), check=check_stick),
     # mochila aplastada: 500 N (≈ 50 kg) repartidos en toda la cara
     "backpack_crush": dict(stl="occ", setup=setup_pressure(500), check=check_screen),
     # poner/quitar la visera: el gancho se abre lo que sobresale (clip_hook – tol)

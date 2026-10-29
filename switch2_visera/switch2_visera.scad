@@ -27,7 +27,7 @@ stick_h   = 7.2;    // punta del stick sobre la cara (dbrand 6.27; 30.7-14.4-9.1
 
 /* [Holguras] */
 tol        = 0.4;   // holgura perimetral
-stick_clear = 4.0;  // aire sobre la punta del stick (margen para que la capucha ceda sin tocarlo)
+stick_clear = 6.0;  // aire sobre la punta del stick (margen para que la capucha ceda sin tocarlo)
 screen_gap = 1.8;   // aire entre la pantalla y la placa
 
 /* [Estructura] */
@@ -46,7 +46,7 @@ clip_hook_t = 1.6;
 slot_w      = 1.0;   // ranuras a los lados del dedo para que flexione entero
 // El dedo arranca casi arriba de la pared (no en la cara de la consola): más
 // largo = mucha menos tensión entre capas. Validado por FEA (sim/).
-finger_root_z = 8.2;
+finger_root_z = 10;
 top_clips    = [-45, 45];             // X desde el centro. Lejos de power/volumen, USB-C y L/R
 bottom_clips = [-95, -40, 40, 95];    // libre el USB-C central
 end_clip_w   = 40;                    // abrazaderas en los extremos redondeados de los Joy-Con
@@ -55,9 +55,13 @@ end_clips    = true;
 /* [Rigidez (validada por FEA, ver sim/)] */
 hood_t  = 2.0;      // techo de las capuchas sobre los sticks
 skin_t  = 1.4;      // piel exterior sobre la pantalla (1.4: FEA, rodilla de 30 kg)
-rib_h   = 8.0;      // profundidad del panal interior sobre la pantalla
+rib_h   = 10.0;     // profundidad del panal interior sobre la pantalla (deja 3.8 mm de aire)
 core_s  = 14;       // celda del panal interior (entre caras planas)
-core_rib = 1.2;     // espesor de sus nervios
+core_rib = 1.4;     // espesor de sus nervios
+// zona de pantalla (estimada +1 mm): fuera de ella los nervios bajan en rampa
+// de 45° hasta el apoyo, sin esquinas vivas (FEA)
+screen_hw = 88.5;
+screen_hh = 50;
 
 /* [Panal] */
 hex_s   = 11;       // tamaño de celda (entre caras planas)
@@ -150,6 +154,15 @@ module core2d() {   // nervios del panal interior
     }
 }
 
+// hueco bajo los nervios sobre la pantalla, con paredes a 45° hacia el marco
+module rib_pit() {
+    hull() {
+        translate([0, 0, rib_bot]) linear_extrude(eps) square([2*screen_hw, 2*screen_hh], center=true);
+        translate([0, 0, screen_gap - eps]) linear_extrude(eps)
+            offset(delta=rib_bot - screen_gap) square([2*screen_hw, 2*screen_hh], center=true);
+    }
+}
+
 module hood_vents2d() {
     intersection() {
         offset(r=-3) intersection() { cover2d(-wall); halfplane_out(B + wall); }
@@ -235,7 +248,10 @@ module visera() {
         union() {
             visera_base();
             if (screen_style == "ribbed" && part != "test_clip")
-                translate([0, 0, rib_bot]) linear_extrude(rib_h + eps) core2d();
+                difference() {
+                    translate([0, 0, screen_gap]) linear_extrude(top_z - skin_t - screen_gap + eps) core2d();
+                    rib_pit();
+                }
             if (magnets) magnet_bosses();
         }
         if (magnets) magnet_pockets();

@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 run() { python3 sim/fea.py $1 $2 --size $3 > sim/out/log_$1_$2.txt 2>&1; }
 run screen_point pla 1.2
 run stick_point pla 1.2
-run backpack_crush pla 1.2
+run backpack_crush pla 1.8
 run screen_point petg 1.2
 run snap_fit pla 0.6
 run snap_fit petg 0.6
