@@ -60,6 +60,8 @@ core_s  = 14;       // celda del panal interior (entre caras planas)
 core_rib = 1.4;     // espesor de sus nervios
 // zona de pantalla (estimada +1 mm): fuera de ella los nervios bajan en rampa
 // de 45° hasta el apoyo, sin esquinas vivas (FEA)
+hood_rib_h = 3.0;   // panal bajo el techo de las capuchas (deja stick_clear - 3 mm sobre el stick)
+hood_gusset = 3.0;  // refuerzo a 45° techo/pared de apoyo
 screen_hw = 88.5;
 screen_hh = 50;
 
@@ -151,6 +153,22 @@ module core2d() {   // nervios del panal interior
     intersection() {
         offset(delta=eps) screen_zone2d();
         difference() { square([iL, iH], center=true); hex_grid(iL, iH, core_s, core_rib); }
+    }
+}
+
+// panal poco profundo bajo el techo de las capuchas + refuerzo en la pared de apoyo
+module hood_zone2d() { intersection() { cover2d(-wall); halfplane_out(B + wall); } }
+module hood_ribs() {
+    translate([0, 0, hood_in - hood_rib_h]) linear_extrude(hood_rib_h + eps)
+        intersection() {
+            offset(delta=eps) hood_zone2d();
+            difference() { square([iL, iH], center=true); hex_grid(iL, iH, core_s, core_rib); }
+        }
+    intersection() {
+        linear_extrude(top_z) cover2d(-wall + eps);
+        for (sx = [-1, 1]) mirror([sx < 0 ? 1 : 0, 0, 0])
+            translate([B + wall - eps, 0, hood_in + eps]) rotate([90, 0, 0])
+                linear_extrude(iH, center=true) polygon([[0, 0], [hood_gusset, 0], [0, -hood_gusset]]);
     }
 }
 
@@ -252,6 +270,7 @@ module visera() {
                     translate([0, 0, screen_gap]) linear_extrude(top_z - skin_t - screen_gap + eps) core2d();
                     rib_pit();
                 }
+            if (part != "test_clip") hood_ribs();
             if (magnets) magnet_bosses();
         }
         if (magnets) magnet_pockets();

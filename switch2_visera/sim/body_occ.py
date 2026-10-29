@@ -15,6 +15,7 @@ hood_in = P("stick_h") + P("stick_clear"); top_z = hood_in + P("hood_t")
 skin_t, rib_h, core_s, core_rib, screen_gap = P("skin_t"), P("rib_h"), P("core_s"), P("core_rib"), P("screen_gap")
 bed, margin, corner_r = P("bed"), P("bed_margin"), P("corner_r")
 screen_hw, screen_hh = P("screen_hw"), P("screen_hh")
+hood_rib_h, hood_gusset = P("hood_rib_h"), P("hood_gusset")
 iL, iH = L + 2*tol, H + 2*tol
 ox, oy = iL/2 + wall, iH/2 + wall
 diag = (bed - 2*margin) / math.sqrt(2)
@@ -44,12 +45,18 @@ def build(size, refine=None, coarse=2.2):
     slab, _ = occ.intersect(prism(-wall + 0.01, screen_gap, top_z - skin_t + 0.01), box(-B, B, -500, 500, -1, 100))
     p = core_s + core_rib; dx = p*math.sqrt(3)/2; R = core_s/math.sqrt(3)
     holes = []
-    for i in range(-int(B/dx) - 2, int(B/dx) + 3):
+    for i in range(-int(ox/dx) - 2, int(ox/dx) + 3):
         for j in range(-int(oy/p) - 2, int(oy/p) + 3):
             cx, cy = i*dx, j*p + (p/2 if i % 2 else 0)
             pts = [occ.addPoint(cx + R*math.cos(k*math.pi/3), cy + R*math.sin(k*math.pi/3), rib_bot - 1) for k in range(6)]
             f = occ.addPlaneSurface([occ.addCurveLoop([occ.addLine(pts[k], pts[(k+1) % 6]) for k in range(6)])])
             holes += [e for e in occ.extrude([(2, f)], 0, 0, rib_h + 3) if e[0] == 3]
+    # panal bajo el techo de las capuchas
+    hslab = []
+    for sx in (-1, 1):
+        x0, x1 = (B + wall, ox + 1) if sx > 0 else (-ox - 1, -B - wall)
+        hslab += occ.intersect(prism(-wall + 0.01, hood_in - hood_rib_h, hood_in + 0.01), box(x0, x1, -500, 500, -1, 100))[0]
+    slab = slab + hslab
     ribs, _ = occ.cut(slab, holes)
     # hueco bajo los nervios sobre la pantalla con paredes a 45° (como rib_pit() del .scad)
     d = rib_bot - screen_gap
@@ -60,7 +67,16 @@ def build(size, refine=None, coarse=2.2):
     w0 = rect_wire(screen_hw + d + 0.01, screen_hh + d + 0.01, screen_gap - 0.01)
     pit = [e for e in occ.addThruSections([w0, w1], makeSolid=True, makeRuled=True) if e[0] == 3]
     ribs, _ = occ.cut(ribs, pit)
-    occ.fuse(body, ribs)
+    # refuerzo a 45° techo / pared de apoyo en x = ±(B + wall)
+    gus = []
+    for sx in (-1, 1):
+        xw = sx*(B + wall)
+        pts = [occ.addPoint(xw - sx*0.01, -oy, hood_in + 0.01), occ.addPoint(xw + sx*hood_gusset, -oy, hood_in + 0.01),
+               occ.addPoint(xw - sx*0.01, -oy, hood_in - hood_gusset)]
+        f = occ.addPlaneSurface([occ.addCurveLoop([occ.addLine(pts[k], pts[(k+1) % 3]) for k in range(3)])])
+        gus += [e for e in occ.extrude([(2, f)], 0, 2*oy, 0) if e[0] == 3]
+    gus, _ = occ.intersect(gus, prism(-wall + 0.01, 0, top_z))
+    occ.fuse(body, ribs + gus)
     occ.synchronize()
     vol = sum(occ.getMass(*e) for e in gmsh.model.getEntities(3))
     if refine:

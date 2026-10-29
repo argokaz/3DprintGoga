@@ -205,10 +205,13 @@ def check_screen(xyz, U, res):
                 screen_margin=rib_bot / max(d, 1e-9))
 
 def check_stick(xyz, U, res):
-    zone = (np.abs(xyz[:, 2] - hood_in) < 1e-3) & (np.hypot(xyz[:, 0]-stick_R[0], xyz[:, 1]-stick_R[1]) < 13)
+    # lo más bajo sobre el stick: la cara inferior del panal de la capucha
+    hb = hood_in - P("hood_rib_h")
+    zone = (xyz[:, 2] < hood_in + 1e-3) & (xyz[:, 2] > hb - 1e-3) & (np.hypot(xyz[:, 0]-stick_R[0], xyz[:, 1]-stick_R[1]) < 13)
     d = float(-U[zone, 2].min()) if zone.any() else 0.0
-    return dict(hood_sag_over_stick_mm=d, stick_clearance_mm=stick_clear, touches_stick=bool(d >= stick_clear),
-                stick_margin=stick_clear / max(d, 1e-9))
+    gap = stick_clear - P("hood_rib_h")
+    return dict(hood_sag_over_stick_mm=d, stick_clearance_mm=gap, touches_stick=bool(d >= gap),
+                stick_margin=gap / max(d, 1e-9))
 
 def setup_snap(delta):
     # probador de clips: tramo x 25..65; se empujan hacia fuera los ganchos de arriba y abajo
