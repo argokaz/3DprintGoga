@@ -54,7 +54,7 @@ end_clips    = true;
 
 /* [Rigidez (validada por FEA, ver sim/)] */
 hood_t  = 2.0;      // techo de las capuchas sobre los sticks
-skin_t  = 1.0;      // piel exterior sobre la pantalla (estilo ribbed)
+skin_t  = 1.4;      // piel exterior sobre la pantalla (1.4: FEA, rodilla de 30 kg)
 rib_h   = 8.0;      // profundidad del panal interior sobre la pantalla
 core_s  = 14;       // celda del panal interior (entre caras planas)
 core_rib = 1.2;     // espesor de sus nervios

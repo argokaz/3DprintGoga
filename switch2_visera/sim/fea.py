@@ -61,7 +61,7 @@ def mesh_stl(stl, size, msh):
     print(f"malla: {len(xyz)} nodos, {len(conn)} tet10")
     return xyz, conn
 
-def write_inp(path, xyz, conn, mat, bcs, loads, disp):
+def write_inp(path, xyz, conn, mat, bcs, loads, disp, iterative=False):
     with open(path, "w") as f:
         f.write("*NODE, NSET=NALL\n")
         for k, p in enumerate(xyz): f.write(f"{k+1},{p[0]:.5f},{p[1]:.5f},{p[2]:.5f}\n")
@@ -74,7 +74,7 @@ def write_inp(path, xyz, conn, mat, bcs, loads, disp):
             f.write(f"*NSET, NSET={name}\n"); _ids(f, nodes)
         for name, (nodes, _) in disp.items():
             f.write(f"*NSET, NSET={name}\n"); _ids(f, nodes)
-        f.write("*STEP\n*STATIC, SOLVER=ITERATIVE CHOLESKY\n" if len(xyz) > 700000 else "*STEP\n*STATIC\n")
+        f.write("*STEP\n*STATIC" + (", SOLVER=ITERATIVE CHOLESKY" if iterative else "") + "\n")
         f.write("*BOUNDARY\n")
         for name, (nodes, dofs) in bcs.items():
             for d in dofs: f.write(f"{name},{d},{d},0\n")
@@ -134,12 +134,13 @@ def run(case, matname, size):
         np.savez(msh_cache, xyz=xyz, conn=conn)
     bcs, loads, disp, info = c["setup"](xyz)
     inp = os.path.join(out, "job.inp")
-    write_inp(inp, xyz, conn, mat, bcs, loads, disp)
-    for th in (os.cpu_count(), 1):   # spooles multihilo a veces muere con mallas grandes
+    # directo (spooles, rápido) y, si falla por memoria, iterativo
+    for th, it in ((os.cpu_count(), False), (1, False), (os.cpu_count(), True)):
+        write_inp(inp, xyz, conn, mat, bcs, loads, disp, iterative=it)
         r = subprocess.run(["ccx", "-i", "job"], cwd=out, capture_output=True, text=True,
                            env=dict(os.environ, OMP_NUM_THREADS=str(th), CCX_NPROC_EQUATION_SOLVER=str(th)))
         if "Job finished" in r.stdout: break
-        print(f"ccx con {th} hilos falló (código {r.returncode}): {r.stdout[-400:]}")
+        print(f"ccx ({th} hilos, iterativo={it}) falló (código {r.returncode}): {r.stdout[-300:]}")
     else:
         sys.exit("ccx falló")
     U, S = read_frd(os.path.join(out, "job.frd"), len(xyz))
@@ -172,20 +173,28 @@ def run(case, matname, size):
     return res
 
 # ------------------------------------------------------------------ casos
+def simple_support(xyz):
+    """Apoyo simple sobre la cara de la consola: uz = 0 en toda la superficie de
+    apoyo (puede girar, como en la realidad) y solo lo justo en el plano para
+    quitar el movimiento de sólido rígido."""
+    sup = supports_face(xyz)
+    px = sup[np.abs(xyz[sup, 0]) < 1.0]   # franja central: no se desliza en x
+    py = sup[np.abs(xyz[sup, 1]) < 1.0]   # franja central: no se desliza en y
+    return {"SUP": (sup, (3,)), "PX": (px, (1,)), "PY": (py, (2,))}, len(sup)
+
 def setup_point(cx, cy, F, r=10):
     def f(xyz):
-        sup = supports_face(xyz)
+        bcs, ns = simple_support(xyz)
         loads, sel = disc_load(xyz, cx, cy, r, top_z, F)
-        # anclaje en el plano: los nodos de apoyo no deslizan (rozamiento + dedos)
-        return {"SUP": (sup, (1, 2, 3))}, loads, {}, dict(F_N=F, load_nodes=len(sel), sup_nodes=len(sup))
+        return bcs, loads, {}, dict(F_N=F, load_nodes=len(sel), sup_nodes=ns)
     return f
 
 def setup_pressure(F_total):
     def f(xyz):
-        sup = supports_face(xyz)
+        bcs, ns = simple_support(xyz)
         top = np.where(np.abs(xyz[:, 2] - top_z) < 1e-3)[0]
         loads = [(n, 3, -F_total/len(top)) for n in top]
-        return {"SUP": (sup, (1, 2, 3))}, loads, {}, dict(F_N=F_total, load_nodes=len(top))
+        return bcs, loads, {}, dict(F_N=F_total, load_nodes=len(top), sup_nodes=ns)
     return f
 
 def check_screen(xyz, U, res):

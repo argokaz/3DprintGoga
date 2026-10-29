@@ -1,8 +1,13 @@
 #!/bin/sh
-# Ejecuta todos los casos de carga en PLA y PETG. Resultados en sim/out/*/result.json
+# Casos de carga. Con cargas impuestas la tensión apenas depende del material y la
+# deformación escala con 1/E, así que PETG se simula en la pantalla (el caso de
+# deformación crítico) para confirmarlo; los clips (desplazamiento impuesto) en ambos.
 cd "$(dirname "$0")/.."
-for c in screen_point stick_point backpack_crush; do for m in pla petg; do
-  python3 sim/fea.py $c $m --size 1.2 > sim/out/log_${c}_${m}.txt 2>&1
-done; done
-for m in pla petg; do python3 sim/fea.py snap_fit $m --size 0.6 > sim/out/log_snap_fit_${m}.txt 2>&1; done
+run() { python3 sim/fea.py $1 $2 --size $3 > sim/out/log_$1_$2.txt 2>&1; }
+run screen_point pla 1.2
+run stick_point pla 1.2
+run backpack_crush pla 1.2
+run screen_point petg 1.2
+run snap_fit pla 0.6
+run snap_fit petg 0.6
 echo DONE > sim/out/ALL_DONE
