@@ -14,8 +14,8 @@
 /* [Qué generar] */
 // a1_diag | a1_plate | full | left | right | test_clip | test_hood (incluye abrazadera del extremo)
 part = "a1_diag";
-// solid = pantalla cubierta | honeycomb = panal (más ligero) | open = solo barras (ultraligero)
-screen_style = "honeycomb";
+// ribbed = piel maciza + panal profundo por dentro (rígido, validado por FEA) | solid | honeycomb | open
+screen_style = "ribbed";
 
 /* [Consola (mide la tuya con calibre)] */
 console_L = 272;    // largo con Joy-Con 2
@@ -27,7 +27,7 @@ stick_h   = 7.2;    // punta del stick sobre la cara (dbrand 6.27; 30.7-14.4-9.1
 
 /* [Holguras] */
 tol        = 0.4;   // holgura perimetral
-stick_clear = 2.5;  // aire sobre la punta del stick
+stick_clear = 4.0;  // aire sobre la punta del stick (margen para que la capucha ceda sin tocarlo)
 screen_gap = 1.8;   // aire entre la pantalla y la placa
 
 /* [Estructura] */
@@ -40,22 +40,41 @@ skirt     = 3.0;    // faldón de centrado (hacia la parte trasera)
 // Dedos que bajan por el canto y enganchan detrás de la consola.
 // Con L≈16 mm, t=1.6 y gancho de 1 mm la deformación es ~1 %: segura en PLA.
 clip_w      = 16;
-clip_t      = 1.6;   // espesor del dedo
+clip_t      = 1.4;   // espesor del dedo (1.4: equilibrio agarre / tensión, ver sim/)
 clip_hook   = 1.0;   // cuánto engancha detrás de la consola (sube a 1.2 si queda floja)
 clip_hook_t = 1.6;
 slot_w      = 1.0;   // ranuras a los lados del dedo para que flexione entero
+// El dedo arranca casi arriba de la pared (no en la cara de la consola): más
+// largo = mucha menos tensión entre capas. Validado por FEA (sim/).
+finger_root_z = 8.2;
 top_clips    = [-45, 45];             // X desde el centro. Lejos de power/volumen, USB-C y L/R
 bottom_clips = [-95, -40, 40, 95];    // libre el USB-C central
 end_clip_w   = 40;                    // abrazaderas en los extremos redondeados de los Joy-Con
 end_clips    = true;
+
+/* [Rigidez (validada por FEA, ver sim/)] */
+hood_t  = 2.0;      // techo de las capuchas sobre los sticks
+skin_t  = 1.0;      // piel exterior sobre la pantalla (estilo ribbed)
+rib_h   = 8.0;      // profundidad del panal interior sobre la pantalla
+core_s  = 14;       // celda del panal interior (entre caras planas)
+core_rib = 1.2;     // espesor de sus nervios
 
 /* [Panal] */
 hex_s   = 11;       // tamaño de celda (entre caras planas)
 hex_rib = 1.4;      // espesor de nervio
 bar_w   = 14;       // ancho de barras en el estilo "open"
 // panal pequeño en el techo de las capuchas (celdas < stick, no entra nada)
-hood_vents = true;
+hood_vents = false;  // false: techo macizo, mucho más resistente a la presión
 vent_s  = 7;
+
+/* [Imanes (opcional, experimental)] */
+// Los Joy-Con 2 se sujetan a la tablet con imanes en el raíl. Un imán en la
+// visera, justo sobre la junta Joy-Con/tablet, puede agarrarse a ellos.
+// PRUEBA ANTES con un imán suelto: que se pegue y que la consola no reaccione.
+magnets  = false;
+magnet_d = 6;       // imán de disco 6 x 2 mm (N52)
+magnet_h = 2;
+magnet_y = [-20, 20];   // posiciones Y sobre cada junta (centro = 0)
 
 /* [Impresión en diagonal (una sola pieza en camas de 256 mm)] */
 // La visera se imprime girada 45°. Para que quepa, las esquinas de la
@@ -75,7 +94,8 @@ $fn = 48;
 iL = console_L + 2*tol;
 iH = console_H + 2*tol;
 hood_in  = stick_h + stick_clear;      // altura interior de la capucha
-top_z = hood_in + wall;                // cara exterior plana
+top_z = hood_in + hood_t;              // cara exterior plana
+rib_bot = top_z - skin_t - rib_h;      // cara inferior de los nervios (aire hasta la pantalla)
 B = console_L/2 - joycon_w - bezel_over;   // |x| donde empieza la capucha
 eps = 0.01;
 
@@ -102,8 +122,8 @@ module halfplane_out(x0) { // |x| >= x0
 }
 module halfplane_in(x0) { translate([-x0, -500]) square([2*x0, 1000]); }
 
-module hex_grid(w, h, cell=hex_s) {
-    p  = cell + hex_rib;
+module hex_grid(w, h, cell=hex_s, rib=hex_rib) {
+    p  = cell + rib;
     dx = p * sqrt(3)/2;
     R  = cell / sqrt(3);
     nx = ceil(w/dx) + 1;  ny = ceil(h/p) + 1;
@@ -122,11 +142,27 @@ module screen_cut2d() {
         square([w, iH - 2*bar_w], center=true);
 }
 
+module screen_zone2d() { intersection() { cover2d(-wall); halfplane_in(B); } }
+module core2d() {   // nervios del panal interior
+    intersection() {
+        offset(delta=eps) screen_zone2d();
+        difference() { square([iL, iH], center=true); hex_grid(iL, iH, core_s, core_rib); }
+    }
+}
+
 module hood_vents2d() {
     intersection() {
         offset(r=-3) intersection() { cover2d(-wall); halfplane_out(B + wall); }
         hex_grid(iL, iH, vent_s);
     }
+}
+
+seam_x = console_L/2 - joycon_w;   // junta Joy-Con / tablet
+module magnet_bosses() {
+    for (sx = [-1, 1], y = magnet_y) translate([sx*seam_x, y, 0]) cylinder(d=magnet_d + 2.4, h=hood_in + eps);
+}
+module magnet_pockets() {
+    for (sx = [-1, 1], y = magnet_y) translate([sx*seam_x, y, -1]) cylinder(d=magnet_d + 0.2, h=magnet_h + 1);
 }
 
 // Dedo genérico en un borde recto. Marco local: el borde va según X,
@@ -140,8 +176,21 @@ module finger(w) {
         translate([-w/2, 0, zb - clip_hook_t]) cube([w, eps, clip_hook_t + clip_hook]);
     }
 }
-module finger_slots(w) { // corta el faldón junto al dedo
-    for (sx = [-1, 1]) translate([sx*(w/2 + slot_w/2) - slot_w/2, -1, -skirt - 1]) cube([slot_w, wall + 2, skirt + 1]);
+root_fillet = 1.5;  // redondeo en la raíz del dedo (quita la concentración de tensiones)
+module finger_slots(w) {
+    // ranuras laterales a todo lo alto del dedo, terminadas en agujero de alivio
+    for (sx = [-1, 1]) translate([sx*(w/2 + slot_w/2), 0, 0]) {
+        translate([-slot_w/2, -rim - 1, -skirt - 1]) cube([slot_w, rim + wall + 2, skirt + 1 + finger_root_z]);
+        translate([0, -rim - 1, finger_root_z]) rotate([-90, 0, 0]) cylinder(d=2*slot_w, h=rim + wall + 2, $fn=24);
+    }
+    // por dentro, el dedo queda con espesor clip_t, con redondeo en la raíz
+    difference() {
+        translate([-w/2 - slot_w, -rim - 1, -1]) cube([w + 2*slot_w, rim + 1, finger_root_z + 1]);
+        difference() {
+            translate([-w/2 - slot_w - 1, -root_fillet, finger_root_z - root_fillet]) cube([w + 2*slot_w + 2, root_fillet + eps, root_fillet + eps]);
+            translate([-w/2 - slot_w - 2, -root_fillet, finger_root_z - root_fillet]) rotate([0, 90, 0]) cylinder(r=root_fillet, h=w + 2*slot_w + 4, $fn=24);
+        }
+    }
 }
 // coloca hijos en cada posición de dedo (borde superior, inferior y extremos)
 module at_clips() {
@@ -150,7 +199,7 @@ module at_clips() {
     if (end_clips) for (sx = [-1, 1]) translate([sx*iL/2, 0, 0]) rotate([0, 0, -sx*90]) children(1);
 }
 
-module visera() {
+module visera_base() {
     difference() {
         union() {
             // caja: cara exterior plana + paredes + faldón de centrado
@@ -166,8 +215,11 @@ module visera() {
         linear_extrude(screen_gap + eps)
             difference() { cover2d(-rim); for (s=[-1,1]) translate([s*(B + wall/2), 0]) square([wall, 1000], center=true); }
         // aligerado
-        translate([0, 0, hood_in - 1]) linear_extrude(wall + 2) screen_cut2d();
-        if (hood_vents) translate([0, 0, hood_in - 1]) linear_extrude(wall + 2) hood_vents2d();
+        // zona de pantalla del estilo ribbed: hueco hasta la piel (luego se añade el panal)
+        if (screen_style == "ribbed" && part != "test_clip")
+            translate([0, 0, hood_in - eps]) linear_extrude(top_z - skin_t - hood_in + eps) screen_zone2d();
+        translate([0, 0, hood_in - 1]) linear_extrude(hood_t + 2) screen_cut2d();
+        if (hood_vents) translate([0, 0, hood_in - 1]) linear_extrude(hood_t + 2) hood_vents2d();
         at_clips() { finger_slots(clip_w); finger_slots(end_clip_w); }
         // el faldón superior no debe pisar L/R ni ZL/ZR
         translate([0, 0, -skirt - 1]) linear_extrude(skirt + 1 - eps)
@@ -175,6 +227,18 @@ module visera() {
                 halfplane_out(B);
                 translate([-500, iH/2 - rim]) square([1000, 50]);
             }
+    }
+}
+
+module visera() {
+    difference() {
+        union() {
+            visera_base();
+            if (screen_style == "ribbed" && part != "test_clip")
+                translate([0, 0, rib_bot]) linear_extrude(rib_h + eps) core2d();
+            if (magnets) magnet_bosses();
+        }
+        if (magnets) magnet_pockets();
     }
 }
 
