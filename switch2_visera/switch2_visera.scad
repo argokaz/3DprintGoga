@@ -1,21 +1,25 @@
 // ============================================================
-//  Visera frontal ultraligera para Nintendo Switch 2
-//  Protege la pantalla y evita que los joysticks se aplasten.
+//  Visera frontal para Nintendo Switch 2
+//  Protege los joysticks (capuchas rígidas) y la pantalla de rayones
+//  (piel fina: la pantalla ya lleva cristal templado).
 //
-//  Idea clave: sobre cada Joy-Con hay una "capucha" (hood) que
-//  cubre TODO el mando, así la posición exacta del stick no
-//  importa. Toda la presión se apoya en el borde exterior y en
-//  el marco entre pantalla y Joy-Con, nunca en sticks ni pantalla.
+//  Sujeción v2 (sin dedos sueltos):
+//   - Canal rígido abajo: abraza el borde inferior y engancha detrás.
+//   - Solapa ancha arriba: se encaja a presión al cerrar la visera.
+//   - Paredes de centrado en los extremos de los Joy-Con.
+//  Se pone metiendo primero el borde inferior en el canal y bajando
+//  la visera hasta que la solapa hace clic. Se quita tirando de la
+//  pestaña de la solapa.
 //
 //  Coordenadas: X = largo, Y = alto, Z = hacia fuera de la pantalla.
 //  La cara frontal de la consola está en z = 0.
 // ============================================================
 
 /* [Qué generar] */
-// a1_diag | a1_plate | full | left | right | test_clip | test_hood (incluye abrazadera del extremo)
+// a1_diag | full | test_grip | test_hood
 part = "a1_diag";
-// ribbed = piel maciza + panal profundo por dentro (rígido, validado por FEA) | solid | honeycomb | open
-screen_style = "ribbed";
+// light = piel fina + nervios bajos (pantalla con cristal templado) | ribbed = panel profundo antiaplastamiento
+screen_style = "light";
 
 /* [Consola (mide la tuya con calibre)] */
 console_L = 272;    // largo con Joy-Con 2
@@ -28,29 +32,35 @@ stick_h   = 7.2;    // punta del stick sobre la cara (dbrand 6.27; 30.7-14.4-9.1
 /* [Holguras] */
 tol        = 0.4;   // holgura perimetral
 stick_clear = 6.0;  // aire sobre la punta del stick (margen para que la capucha ceda sin tocarlo)
-screen_gap = 1.8;   // aire entre la pantalla y la placa
+screen_gap = 1.8;   // altura del apoyo perimetral sobre el marco
 
 /* [Estructura] */
-wall      = 1.2;    // espesor de paredes y techo (3 perímetros de 0.4)
+wall      = 1.2;    // espesor de paredes
 rim       = 3.0;    // ancho del apoyo perimetral sobre el marco
 bezel_over = 5;     // cuánto entra la capucha sobre el marco de la tablet
 skirt     = 3.0;    // faldón de centrado (hacia la parte trasera)
 
-/* [Clips (dimensionados para PLA)] */
-// Dedos que bajan por el canto y enganchan detrás de la consola.
-// Con L≈16 mm, t=1.6 y gancho de 1 mm la deformación es ~1 %: segura en PLA.
-clip_w      = 16;
-clip_t      = 1.4;   // espesor del dedo (1.4: equilibrio agarre / tensión, ver sim/)
-clip_hook   = 1.0;   // cuánto engancha detrás de la consola (sube a 1.2 si queda floja)
-clip_hook_t = 1.6;
-slot_w      = 1.0;   // ranuras a los lados del dedo para que flexione entero
-// El dedo arranca casi arriba de la pared (no en la cara de la consola): más
-// largo = mucha menos tensión entre capas. Validado por FEA (sim/).
-finger_root_z = 10;
-top_clips    = [-45, 45];             // X desde el centro. Lejos de power/volumen, USB-C y L/R
-bottom_clips = [-95, -40, 40, 95];    // libre el USB-C central
-end_clip_w   = 40;                    // abrazaderas en los extremos redondeados de los Joy-Con
-end_clips    = true;
+/* [Pantalla (estilo light)] */
+light_skin = 1.0;   // piel sobre la pantalla: 5 capas de 0.2, maciza (sin agujeros: nada la raya)
+light_rib_h = 4.0;  // nervios bajos bajo la piel (planitud y rigidez, ~10 mm sobre el cristal)
+light_rib_t = 1.2;
+light_rib_pitch = 40;
+
+/* [Sujeción v2] */
+// Canal inferior rígido (no flexa)
+chan_hx   = 96;     // medio largo del canal (|x| <= chan_hx, tramo recto de la visera)
+chan_t    = 2.4;    // espesor de su pared
+chan_lip  = 2.6;    // cuánto engancha detrás de la consola (gancho a 45°)
+// Solapa superior (lo único que flexa: ancha y larga, ver sim/)
+flap_x    = [-25, 90];  // tramo X. Fuera quedan power/volumen (arriba a la izquierda)
+flap_t    = 1.2;
+flap_hook = 1.6;    // engancha flap_hook - tol detrás de la consola (gancho a 45°)
+flap_slot = 1.0;    // ranuras laterales que la separan de la pared
+flap_beam = 6.0;    // viga bajo la piel en la raíz de la solapa (alto; ancho = flap_beam + 2)
+flap_tab  = 3.0;    // pestaña para soltarla
+// Paredes de centrado en los extremos (sin gancho)
+end_hy    = 20;     // medio alto (tramo recto del extremo)
+end_depth = 7;      // cuánto bajan por el canto del Joy-Con
 
 /* [Rigidez (validada por FEA, ver sim/)] */
 hood_t  = 2.6;      // techo de las capuchas sobre los sticks
@@ -90,10 +100,6 @@ magnet_y = [-20, 20];   // posiciones Y sobre cada junta (centro = 0)
 diag_print = true;
 bed        = 256;   // Bambu A1 (el A1 mini, 180 mm, no sirve)
 bed_margin = 3;
-
-/* [División para camas pequeñas] */
-flange_t = 2.4;     // pestaña de unión
-pin_d    = 2.2;     // M2 o filamento de 1.75
 
 $fn = 48;
 
@@ -142,14 +148,13 @@ module hex_grid(w, h, cell=hex_s, rib=hex_rib) {
 module screen_cut2d() {
     m = rim + 3;
     w = 2*(B - 3);  h = iH - 2*m;
-    if (part == "test_clip") {}  // el probador sale macizo (sin trozos sueltos)
-    else if (screen_style == "honeycomb")
+    if (screen_style == "honeycomb")
         intersection() { square([w, h], center=true); hex_grid(w, h); }
     else if (screen_style == "open")
         square([w, iH - 2*bar_w], center=true);
 }
 
-module screen_zone2d() { intersection() { cover2d(-wall); halfplane_in(B); } }
+module screen_zone2d() { intersection() { cover2d(0); halfplane_in(B); } }
 module core2d() {   // nervios del panal interior
     intersection() {
         offset(delta=eps) screen_zone2d();
@@ -158,7 +163,7 @@ module core2d() {   // nervios del panal interior
 }
 
 // panal poco profundo bajo el techo de las capuchas + refuerzo en la pared de apoyo
-module hood_zone2d() { intersection() { cover2d(-wall); halfplane_out(B + wall); } }
+module hood_zone2d() { intersection() { cover2d(0); halfplane_out(B + wall); } }
 module hood_ribs() {
     translate([0, 0, hood_in - hood_rib_h]) linear_extrude(hood_rib_h + eps)
         intersection() {
@@ -166,7 +171,7 @@ module hood_ribs() {
             difference() { square([iL, iH], center=true); hex_grid(iL, iH, core_s + core_rib - hood_rib_t, hood_rib_t); }
         }
     intersection() {
-        linear_extrude(top_z) cover2d(-wall + eps);
+        linear_extrude(top_z) cover2d(eps);
         for (sx = [-1, 1]) mirror([sx < 0 ? 1 : 0, 0, 0])
             translate([B + wall - eps, 0, hood_in + eps]) rotate([90, 0, 0])
                 linear_extrude(iH, center=true) polygon([[0, 0], [hood_gusset, 0], [0, -hood_gusset]]);
@@ -184,7 +189,7 @@ module rib_pit() {
 
 module hood_vents2d() {
     intersection() {
-        offset(r=-3) intersection() { cover2d(-wall); halfplane_out(B + wall); }
+        offset(r=-3) intersection() { cover2d(0); halfplane_out(B + wall); }
         hex_grid(iL, iH, vent_s);
     }
 }
@@ -197,38 +202,78 @@ module magnet_pockets() {
     for (sx = [-1, 1], y = magnet_y) translate([sx*seam_x, y, -1]) cylinder(d=magnet_d + 0.2, h=magnet_h + 1);
 }
 
-// Dedo genérico en un borde recto. Marco local: el borde va según X,
-// +Y hacia fuera, la cara interior del dedo está en y = 0.
-module finger(w) {
-    zb = -(console_T + tol);
-    translate([-w/2, 0, zb - clip_hook_t]) cube([w, clip_t, -zb + clip_hook_t + eps]);
-    // gancho con rampa de entrada (45°)
-    hull() {
-        translate([-w/2, -clip_hook, zb - clip_hook_t]) cube([w, clip_hook + eps, 0.5]);
-        translate([-w/2, 0, zb - clip_hook_t]) cube([w, eps, clip_hook_t + clip_hook]);
-    }
-}
-root_fillet = 1.5;  // redondeo en la raíz del dedo (quita la concentración de tensiones)
-module finger_slots(w) {
-    // ranuras laterales a todo lo alto del dedo, terminadas en agujero de alivio
-    for (sx = [-1, 1]) translate([sx*(w/2 + slot_w/2), 0, 0]) {
-        translate([-slot_w/2, -rim - 1, -skirt - 1]) cube([slot_w, rim + wall + 2, skirt + 1 + finger_root_z]);
-        translate([0, -rim - 1, finger_root_z]) rotate([-90, 0, 0]) cylinder(d=2*slot_w, h=rim + wall + 2, $fn=24);
-    }
-    // por dentro, el dedo queda con espesor clip_t, con redondeo en la raíz
-    difference() {
-        translate([-w/2 - slot_w, -rim - 1, -1]) cube([w + 2*slot_w, rim + 1, finger_root_z + 1]);
-        difference() {
-            translate([-w/2 - slot_w - 1, -root_fillet, finger_root_z - root_fillet]) cube([w + 2*slot_w + 2, root_fillet + eps, root_fillet + eps]);
-            translate([-w/2 - slot_w - 2, -root_fillet, finger_root_z - root_fillet]) rotate([0, 90, 0]) cylinder(r=root_fillet, h=w + 2*slot_w + 4, $fn=24);
+// ---------- sujeción v2 ----------
+zb = -(console_T + tol);   // plano trasero de la consola (con holgura)
+
+// perfil de gancho a 45° (imprimible boca abajo): ancho d hacia dentro
+module hook2d(d, h) { polygon([[0, 0], [d, -d], [d, -d - h], [0, -d - h]]); }
+// diente: cara de retención a 45° arriba y rampa de entrada a 45° abajo
+module tooth2d(d) { polygon([[0, 0], [d, -d], [0, -2*d]]); }
+
+// canal inferior: pared + gancho, en marco local (borde según X, +Y hacia fuera)
+module channel() {
+    translate([-chan_hx, 0, 0]) rotate([90, 0, 90]) linear_extrude(2*chan_hx)
+        union() {
+            translate([0, zb - chan_lip - 1.2]) square([chan_t, -zb + chan_lip + 1.2 + eps]);
+            translate([0, zb]) mirror([1, 0]) hook2d(chan_lip, 1.2);
         }
+}
+
+// solapa superior: pared colgada de una viga, gancho a 45° y pestaña
+flap_root = top_z - flap_beam;
+module flap() {
+    w = flap_x[1] - flap_x[0];
+    translate([flap_x[0], 0, 0]) rotate([90, 0, 90]) linear_extrude(w)
+        union() {
+            translate([0, zb - 2*flap_hook]) square([flap_t, top_z - (zb - 2*flap_hook)]);
+            translate([0, zb]) mirror([1, 0]) tooth2d(flap_hook);
+            // pestaña hacia fuera en el extremo, a 45° (imprimible boca abajo)
+            translate([flap_t, zb - 2*flap_hook]) polygon([[0, 0], [flap_tab, 0], [0, flap_tab]]);
+        }
+}
+// lo que hay que vaciar para que la solapa flexe libre
+module flap_relief() {
+    w = flap_x[1] - flap_x[0];
+    // ranuras laterales hasta la viga, con agujero de alivio arriba
+    for (x = flap_x) {
+        translate([x - flap_slot/2, -rim - 2, zb - 20]) cube([flap_slot, rim + flap_t + 4, flap_root - zb + 20]);
+        translate([x, -rim - 2, flap_root]) rotate([-90, 0, 0]) cylinder(d=2*flap_slot, h=rim + flap_t + 4, $fn=24);
+    }
+    // por dentro: sin apoyo ni pared detrás de la solapa
+    translate([flap_x[0] + flap_slot/2, -rim - 2, -1]) cube([w - flap_slot, rim + 2, flap_root + 1]);
+}
+flap_fillet = 2.0;  // redondeo solapa/viga (sin él la raíz concentra la tensión: FEA)
+module flap_beam() {   // raíz rígida: viga maciza bajo la piel a lo largo de la solapa
+    w = flap_x[1] - flap_x[0] + 6;
+    translate([flap_x[0] - 3, -flap_beam - 2, flap_root]) cube([w, flap_beam + 2, flap_beam]);
+    translate([flap_x[0] - 3, 0, 0]) difference() {
+        translate([0, -flap_fillet, flap_root - flap_fillet]) cube([w, flap_fillet + eps, flap_fillet + eps]);
+        translate([-1, -flap_fillet, flap_root - flap_fillet]) rotate([0, 90, 0]) cylinder(r=flap_fillet, h=w + 2, $fn=32);
     }
 }
-// coloca hijos en cada posición de dedo (borde superior, inferior y extremos)
-module at_clips() {
-    for (x = top_clips)    translate([x,  iH/2, 0]) children(0);
-    for (x = bottom_clips) translate([x, -iH/2, 0]) rotate([0, 0, 180]) children(0);
-    if (end_clips) for (sx = [-1, 1]) translate([sx*iL/2, 0, 0]) rotate([0, 0, -sx*90]) children(1);
+
+// paredes de centrado en los extremos (sin gancho: no estorban al cerrar)
+module end_wall() {
+    translate([-end_hy, 0, -end_depth]) cube([2*end_hy, wall, end_depth + eps]);
+}
+
+module at_edges() {
+    translate([0, -iH/2, 0]) rotate([0, 0, 180]) children(0);         // canal abajo
+    translate([0,  iH/2, 0]) children(1);                              // solapa arriba
+    for (sx = [-1, 1]) translate([sx*iL/2, 0, 0]) rotate([0, 0, -sx*90]) children(2);
+}
+
+// piel fina con nervios bajos (estilo light)
+module light_ribs() {
+    n = ceil(iL / light_rib_pitch);
+    translate([0, 0, top_z - light_skin - light_rib_h]) linear_extrude(light_rib_h + eps)
+        intersection() {
+            offset(delta=-8) screen_zone2d();   // no tocan las paredes (ni la solapa)
+            union() {
+                for (i = [-n:n]) translate([i*light_rib_pitch - light_rib_t/2, -500]) square([light_rib_t, 1000]);
+                for (j = [-2:2]) translate([-500, j*light_rib_pitch - light_rib_t/2]) square([1000, light_rib_t]);
+            }
+        }
 }
 
 module visera_base() {
@@ -236,23 +281,26 @@ module visera_base() {
         union() {
             // caja: cara exterior plana + paredes + faldón de centrado
             translate([0, 0, -skirt]) linear_extrude(skirt + top_z) cover2d(wall);
-            at_clips() { finger(clip_w); finger(end_clip_w); }
+            at_edges() { channel(); flap(); end_wall(); }
         }
-        // hueco de la consola
-        translate([0, 0, -console_T - 10]) linear_extrude(console_T + 10) outline(0);
+        // hueco de la consola: SOLO su volumen (hasta la cara trasera). Si siguiera
+        // más atrás borraría los ganchos que enganchan detrás de ella.
+        translate([0, 0, zb]) linear_extrude(-zb + eps) outline(0);
         // aire interior (sticks y pantalla), deja las paredes de apoyo en x = ±B
         translate([0, 0, screen_gap]) linear_extrude(hood_in - screen_gap)
-            difference() { cover2d(-wall); for (s=[-1,1]) translate([s*(B + wall/2), 0]) square([wall, 1000], center=true); }
+            difference() { cover2d(0); for (s=[-1,1]) translate([s*(B + wall/2), 0]) square([wall, 1000], center=true); }
         // apoyo perimetral sobre el marco (ancho 'rim') y paredes x = ±B hasta la cara
         linear_extrude(screen_gap + eps)
             difference() { cover2d(-rim); for (s=[-1,1]) translate([s*(B + wall/2), 0]) square([wall, 1000], center=true); }
         // aligerado
         // zona de pantalla del estilo ribbed: hueco hasta la piel (luego se añade el panal)
-        if (screen_style == "ribbed" && part != "test_clip")
-            translate([0, 0, hood_in - eps]) linear_extrude(top_z - skin_t - hood_in + eps) screen_zone2d();
+        // zona de pantalla: hueco hasta la piel (luego se añaden nervios)
+        translate([0, 0, hood_in - eps]) linear_extrude(top_z - (screen_style == "ribbed" ? skin_t : light_skin) - hood_in + eps) screen_zone2d();
         translate([0, 0, hood_in - 1]) linear_extrude(hood_t + 2) screen_cut2d();
         if (hood_vents) translate([0, 0, hood_in - 1]) linear_extrude(hood_t + 2) hood_vents2d();
-        at_clips() { finger_slots(clip_w); finger_slots(end_clip_w); }
+        translate([0, iH/2, 0]) flap_relief();
+        // sin apoyo a lo largo del canal: la consola entra inclinada sin rozar
+        translate([-chan_hx, -iH/2 - eps, -1]) cube([2*chan_hx, rim + 1, screen_gap + 1 + eps]);
         // el faldón superior no debe pisar L/R ni ZL/ZR
         translate([0, 0, -skirt - 1]) linear_extrude(skirt + 1 - eps)
             intersection() {
@@ -266,46 +314,17 @@ module visera() {
     difference() {
         union() {
             visera_base();
-            if (screen_style == "ribbed" && part != "test_clip")
+            if (screen_style == "light") light_ribs();
+            translate([0, iH/2, 0]) intersection() { flap_beam(); translate([0, -iH/2, 0]) linear_extrude(top_z) cover2d(-eps); }
+            if (screen_style == "ribbed")
                 difference() {
                     translate([0, 0, screen_gap]) linear_extrude(top_z - skin_t - screen_gap + eps) core2d();
                     rib_pit();
                 }
-            if (part != "test_clip") hood_ribs();
+            hood_ribs();
             if (magnets) magnet_bosses();
         }
         if (magnets) magnet_pockets();
-    }
-}
-
-// ---------- división en dos mitades (camas < 280 mm) ----------
-// Cada mitad lleva una pestaña interior en el corte (x = 0). Se unen
-// con pegamento + 3 tornillos M2x8 (o trozos de filamento de 1.75).
-module flange(side) {
-    translate([side > 0 ? 0 : -flange_t, 0, screen_gap])
-        rotate([90, 0, 90]) linear_extrude(flange_t)
-            intersection() {
-                translate([-500, 0]) square([1000, hood_in - screen_gap + eps]);
-                translate([0, -screen_gap]) square([iH - 2*wall, 1000], center=true);
-            }
-}
-module joint_holes() {
-    for (y = [-iH/3, 0, iH/3])
-        translate([0, y, (screen_gap + hood_in)/2]) rotate([0, 90, 0]) cylinder(d=pin_d, h=20, center=true, $fn=16);
-}
-module half(side) { // side = -1 izquierda, +1 derecha
-    difference() {
-        union() {
-            intersection() {
-                visera();
-                translate([side > 0 ? 0 : -1000, -500, -100]) cube([1000, 1000, 200]);
-            }
-            flange(side);
-            // banda sólida en la cara exterior junto al corte (para pegar)
-            translate([side > 0 ? 0 : -flange_t*2, 0, hood_in]) linear_extrude(wall)
-                intersection() { translate([0, -iH/2]) square([flange_t*2, iH]); outline(-wall/2); }
-        }
-        joint_holes();
     }
 }
 
@@ -321,9 +340,6 @@ module face_down() { translate([0, 0, top_z]) rotate([180, 0, 0]) children(); }
 
 if      (part == "full")      visera();
 else if (part == "a1_diag")   rotate([0, 0, 45]) face_down() visera();   // una pieza, lista para la A1
-else if (part == "a1_plate")  // las dos mitades en una cama de 256 x 256 (Bambu A1)
-    for (sd = [-1, 1]) translate([sd*(iH/2 + wall + 4), 0, 0]) rotate([0, 0, 90]) translate([-sd*(iL/4 + wall/2), 0, 0]) face_down() half(sd);
-else if (part == "left")      half(-1);
-else if (part == "right")     half(1);
-else if (part == "test_clip") test_strip(25, 65);
-else if (part == "test_hood") test_strip(B - 1.5, console_L/2 + 5);
+else if (part == "test_grip") face_down() test_strip(30, 70);   // canal + solapa: prueba el agarre
+else if (part == "sim_grip")  test_strip(30, 70);                // lo mismo sin girar (para sim/)
+else if (part == "test_hood") face_down() test_strip(B - 1.5, console_L/2 + 5);

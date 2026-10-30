@@ -28,7 +28,6 @@ stick_h, stick_clear = P("stick_h"), P("stick_clear")
 hood_in = stick_h + stick_clear
 top_z = hood_in + P("hood_t")
 rib_bot = top_z - P("skin_t") - P("rib_h")
-clip_hook = P("clip_hook")
 stick_L = (-L/2 + 17.75, H/2 - 35)     # estimación
 stick_R = ( L/2 - 17.75, H/2 - 70)
 
@@ -223,6 +222,20 @@ def setup_snap(delta):
         return {"CUT": (cut, (1, 2, 3))}, [], {"HUP": (up, (2, delta)), "HDN": (dn, (2, -delta))}, dict(delta_mm=delta, hook_nodes=len(up) + len(dn))
     return f
 
+def setup_flap(delta):
+    # tramo x 30..70 con canal y solapa: se abre el diente de la solapa delta mm
+    def f(xyz):
+        cut = (np.abs(xyz[:, 0] - 30) < 1e-3) | (np.abs(xyz[:, 0] - 70) < 1e-3)
+        zb = -(T + tol); d = P("flap_hook")
+        flap = (xyz[:, 1] > iH/2 - d - 0.1) & (xyz[:, 2] < top_z - P("flap_beam") - 0.05)
+        cut = np.where(cut & ~flap)[0]                             # la solapa no se fija: flexa libre
+        # solo la arista de la punta del diente (contacto con la esquina de la consola):
+        # el diente gira libre, como en la realidad
+        tooth = np.where((xyz[:, 1] > iH/2 - d - 0.01) & (xyz[:, 1] < iH/2 - d + 0.15) &
+                         (np.abs(xyz[:, 2] - (zb - d)) < 0.3))[0]
+        return {"CUT": (cut, (1, 2, 3))}, [], {"TOOTH": (tooth, (2, delta))}, dict(delta_mm=delta, tooth_nodes=len(tooth))
+    return f
+
 CASES = {
     # rodilla / codo sobre el centro de la pantalla: 300 N ≈ 30 kg sobre Ø20 mm
     "screen_point":  dict(stl="occ", refine=(0, 0, 40), setup=setup_point(0, 0, 300), check=check_screen),
@@ -231,7 +244,8 @@ CASES = {
     # mochila aplastada: 500 N (≈ 50 kg) repartidos en toda la cara
     "backpack_crush": dict(stl="occ", setup=setup_pressure(500), check=check_screen),
     # poner/quitar la visera: el gancho se abre lo que sobresale (clip_hook – tol)
-    "snap_fit":      dict(stl="stl/test_clip.stl", setup=setup_snap(clip_hook - tol)),
+    # cerrar la visera: el diente de la solapa se abre lo que engancha (flap_hook - tol)
+    "flap_snap":     dict(stl="sim/sim_grip.stl", setup=setup_flap(P("flap_hook") - tol)),
 }
 
 if __name__ == "__main__":
