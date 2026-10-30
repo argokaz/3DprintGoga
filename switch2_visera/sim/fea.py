@@ -125,6 +125,10 @@ def run(case, matname, size):
     msh_cache = os.path.join(HERE, "out", f"mesh_{os.path.basename(c['stl'])}_{size}_{c.get('refine')}.npz")
     if os.path.exists(msh_cache):
         d = np.load(msh_cache); xyz, conn = d["xyz"], d["conn"]
+    elif c["stl"].startswith("profile:"):
+        sys.path.insert(0, HERE); import profile_occ
+        _, x0, x1 = c["stl"].split(":")
+        xyz, conn = profile_occ.build(os.path.join(ROOT, "stl/full.stl"), float(x0), float(x1), size)
     elif c["stl"] == "occ":
         sys.path.insert(0, HERE); import body_occ
         xyz, conn = body_occ.build(size, c.get("refine"))
@@ -245,7 +249,7 @@ CASES = {
     "backpack_crush": dict(stl="occ", setup=setup_pressure(500), check=check_screen),
     # poner/quitar la visera: el gancho se abre lo que sobresale (clip_hook – tol)
     # cerrar la visera: el diente de la solapa se abre lo que engancha (flap_hook - tol)
-    "flap_snap":     dict(stl="sim/sim_grip.stl", setup=setup_flap(P("flap_hook") - tol)),
+    "flap_snap":     dict(stl="profile:30:70", setup=setup_flap(P("flap_hook") - tol)),
 }
 
 if __name__ == "__main__":
