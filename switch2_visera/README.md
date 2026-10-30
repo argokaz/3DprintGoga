@@ -1,11 +1,9 @@
-# Visera frontal reforzada — Nintendo Switch 2
+# Visera frontal — Nintendo Switch 2
 
-Tapa frontal de una pieza que protege la pantalla y evita que los joysticks se aplasten
-en la mochila. Una "capucha" hueca cubre cada Joy-Con 2 entero, así la posición exacta
-del stick no importa (Nintendo no la publica). Toda la presión se apoya en el borde
-exterior y en el marco de la tablet, nunca en sticks ni pantalla.
-
-Diseño validado por elementos finitos (ver [Simulaciones](#simulaciones)).
+Tapa frontal de una pieza: capuchas rígidas que protegen los joysticks y botones, y una
+piel fina sobre la pantalla contra rayones (la pantalla ya lleva cristal templado).
+La capucha cubre cada Joy-Con 2 entero, así que no hay agujeros que alinear con los sticks
+(el problema número uno de otros modelos).
 
 ![vista](img/full.png)
 
@@ -13,89 +11,79 @@ Diseño validado por elementos finitos (ver [Simulaciones](#simulaciones)).
 
 | Archivo | Uso | Peso PLA / PETG |
 |---|---|---|
-| `visera_switch2_A1_PETG.3mf` | **Recomendado.** Proyecto Bambu Studio listo: A1 0.4, PETG HF, placa PEI texturizada | — / ~173 g |
-| `visera_switch2_A1_PLA.3mf` | Igual con PLA Basic | ~169 g / — |
-| `stl/test_clip.stl` | Probar holgura y dedos de agarre (imprímelo primero) | ~19 g |
-| `stl/test_hood.stl` | Probar capucha sobre el stick + abrazadera del extremo | ~30 g |
-| `stl/a1_diag.stl` | Visera de una pieza ya girada 45° y boca abajo (249,6 × 249,6 mm) | ~169 / 173 g |
-| `stl/full.stl` | La misma visera sin girar (para mirarla o para camas ≥ 280 mm) | ~169 / 173 g |
+| `visera_switch2_A1_PETG.3mf` | **Recomendado.** Proyecto Bambu Studio: A1 0.4, PETG HF, placa PEI texturizada | — / ~132 g |
+| `visera_switch2_A1_PLA.3mf` | Igual con PLA Basic | ~129 g / — |
+| `stl/test_grip.stl` | **Imprímelo primero**: tramo de 40 mm con el canal inferior y la solapa | ~17 g |
+| `stl/test_hood.stl` | Capucha sobre el stick + pared del extremo | ~28 g |
+| `stl/a1_diag.stl` | Visera ya girada 45° y boca abajo (249,6 × 249,6 mm) | ~129 / 132 g |
+| `stl/full.stl` | La misma sin girar (para mirarla) | |
 
-Los 3MF llevan: capa 0,2 mm, 4 paredes, gyroid 25 %, 5/4 capas sup./inf., sin soportes,
-sin brim, costura atrás. Se generan con `python3 tools/make_3mf.py stl/a1_diag.stl salida.3mf --filament pla|petg`
-a partir de los perfiles oficiales de Bambu (`tools/bbl_a1_presets.json`).
-No se han abierto en Bambu Studio desde este entorno: si algo no carga, abre `stl/a1_diag.stl`.
+Los 3MF llevan: capa 0,2 mm, 4 paredes, gyroid 25 %, sin soportes, sin brim.
+Se generan con `python3 tools/make_3mf.py stl/a1_diag.stl salida.3mf --filament pla|petg`.
+No se han podido abrir en Bambu Studio desde este entorno: si algo no carga, abre `stl/a1_diag.stl`.
+Todas las piezas se imprimen boca abajo **sin soportes** (todos los voladizos son de 45°).
 
 ![plano](img/plano_diagonal.png)
 
-**Por qué cabe en la A1:** un cuadrado de 256 mm girado 45° admite piezas de hasta ~360 mm
-si las esquinas están redondeadas. Por eso las esquinas de la visera tienen radio ~35 mm
-(`cover_r`, calculado a partir de `bed`). En cada esquina queda al aire un pequeño triángulo
-de la cara frontal, donde no hay botones.
+**Por qué cabe en la A1:** a 45° un cuadrado de 256 mm admite piezas de ~360 mm si las
+esquinas están redondeadas (`cover_r` ≈ 35 mm, calculado a partir de `bed`).
 
-Regenerar: `openscad -o stl/a1_diag.stl switch2_visera.scad`
-(`part` = `a1_diag | full | test_clip | test_hood | left | right`).
+## Sujeción (v2)
+
+![corte](img/corte_sujecion.png)
+
+1. **Canal rígido abajo** (192 mm): abraza el borde inferior y engancha 2,6 mm detrás de la
+   consola con un labio a 45°. No flexa.
+2. **Solapa ancha arriba** (115 mm, x = −25…90): pared de 1,2 mm colgada de una viga de
+   6 × 8 mm con redondeo en la raíz; diente a 45° (entrada y retención) que engancha 1,2 mm
+   detrás. Es lo único que flexa. Pestaña hacia fuera para soltarla.
+3. **Pies de apoyo** continuos sobre el marco, arriba y abajo, y **paredes de centrado** en los
+   extremos de los Joy-Con.
+
+**Poner:** mete el borde inferior de la consola en el canal (inclinada) y baja la visera
+hasta que la solapa hace clic. **Quitar:** tira de la pestaña y gira la visera hacia abajo.
+
+Comprobado en 2D (`img/corte_sujecion.png`): al cerrar, la consola no choca con ninguna parte
+rígida; solo abre la solapa ~1,6 mm. Ajustes: `flap_hook` (agarre arriba), `chan_lip` (abajo),
+`tol`. Comprueba en tu consola que el tramo `flap_x` no tapa el botón de encendido ni el volumen.
+
+> Versión anterior (dedos de agarre): el hueco de la consola llegaba 10 mm detrás de ella y
+> borraba los ganchos, por eso no agarraba. Corregido: el hueco acaba en la cara trasera.
 
 ## Estructura
 
-- **Sobre la pantalla:** piel maciza de 1,4 mm + panal hexagonal de 10,6 mm de profundidad
-  por dentro. Fuera de la pantalla los nervios bajan en rampa de 45° hasta el apoyo (sin esquinas vivas).
-  Quedan 3,8 mm de aire hasta la pantalla.
+- **Pantalla:** piel maciza de 1 mm (5 capas, sin agujeros) + nervios bajos cada 40 mm; queda
+  a ~14 mm del cristal. `screen_style = "ribbed"` recupera el panel profundo antiaplastamiento.
 - **Capuchas:** techo de 2,6 mm + panal de 3,4 mm (nervios de 1,8 mm) + refuerzo a 45° en la
-  pared de apoyo. Quedan 2,6 mm de aire sobre la punta del stick (stick estimado en 7,2 mm).
-- **Grosor total** con la consola: 31,7 mm.
-
-## Sujeción
-
-8 puntos de agarre que bajan por el canto y enganchan 1 mm detrás de la consola:
-
-- 2 dedos arriba (x = ±45 mm), lejos de power/volumen, USB-C y L/R.
-- 4 dedos abajo (±40 y ±95), dejando libre el USB-C central.
-- 2 abrazaderas de 40 mm que envuelven los extremos redondeados de los Joy-Con.
-- Cada dedo arranca casi arriba de la pared (`finger_root_z`), con redondeo en la raíz y
-  agujeros de alivio al final de las ranuras: así flexiona a lo largo de ~26 mm con poca tensión.
-
-Si queda floja, sube `clip_hook` a 1.2; si cuesta mucho, bájalo a 0.8 o sube `tol`.
-
-**Imanes (opcional, experimental):** `magnets = true` añade 4 alojamientos para imanes de
-6 × 2 mm sobre la junta Joy-Con/tablet, donde la consola tiene sus propios imanes. Prueba antes
-con un imán suelto que se pegue y que la consola no reaccione (reposo, detección de mandos).
-
-## Impresión
-
-- El 3MF / `a1_diag.stl` ya viene orientado (45°, cara exterior sobre la cama): **no lo gires**, **sin soportes**.
-- **PETG recomendado** para la mochila: más tenaz (se dobla en vez de partirse), aguanta ~75–80 °C
-  (PLA ~55 °C) y se deforma menos con presión continua.
-- Para quitarla: tira primero de una abrazadera de un extremo.
+  pared de apoyo. Quedan 2,6 mm de aire sobre la punta del stick y sobre todos los botones.
+- **Grosor** con la consola: ~29 mm por delante y detrás, +3,8 mm de labios en los bordes.
 
 ## Simulaciones
 
-FEA lineal con CalculiX (tetraedros cuadráticos C3D10, malla gmsh), en `sim/`:
-`sim/run_all.sh` ejecuta todos los casos; `sim/fea.py <caso> <material>` uno.
-Material impreso conservador: PLA E = 3000 MPa, 45 MPa en el plano, 25 MPa entre capas;
-PETG E = 1900 MPa, 40 / 28 MPa. Margen = resistencia / tensión máxima (pico real, solo se
-excluyen los nodos a < 1,5 mm de cargas o apoyos impuestos). La visera se imprime boca abajo,
-así que la tensión entre capas es σzz del modelo.
+FEA lineal con CalculiX (C3D10, malla gmsh) en `sim/` (`sim/run_all.sh`). Material impreso
+conservador: PLA E = 3000 MPa, 45 MPa en el plano y 25 MPa entre capas; PETG 1900 MPa,
+40 / 28 MPa. Margen = resistencia / tensión máxima.
 
-| Caso | Carga | Tensión máx. (PLA) | Margen PLA (plano / entre capas) | Margen PETG | Hundimiento → aire disponible |
-|---|---|---|---|---|---|
-| Rodilla sobre la pantalla | 300 N (~30 kg) en Ø20 mm, centro | 26,3 MPa | **1,7× / 3,8×** | ~1,5× | 0,75 mm (PETG 1,2) → 3,8 mm: no toca |
-| Rodilla sobre el stick | 300 N en Ø20 mm, capucha derecha | 33,1 MPa | **1,4× / 2,6×** | ~1,2× (dúctil) | 0,35 mm (PETG 0,55) → 2,6 mm: no toca |
-| Mochila aplastada | 500 N (~50 kg) repartidos | 12,9 MPa | **3,5× / 5,1×** | ~3,1× | 0,23 mm |
-| Poner / quitar la visera | gancho se abre 0,6 mm | 11,4 MPa entre capas | **2,2×** entre capas | **4,0×** | — |
+| Caso | Tensión máx. | Margen PLA | Margen PETG | Resultado |
+|---|---|---|---|---|
+| Rodilla 30 kg sobre la capucha del stick | 33 MPa | 1,4× | ~1,2× (dúctil) | baja 0,35 mm de 2,6: no toca |
+| Cerrar/abrir la solapa (diente se abre 1,2 mm) | 9,1 MPa entre capas | **2,7×** | **4,6×** | — |
 
-Con carga impuesta la tensión casi no depende del material y el hundimiento escala con 1/E;
-se comprobó simulando la pantalla también en PETG (28,5 vs 28,7 MPa; 0,85 vs 1,32 mm).
+La solapa se analiza en una franja del corte real (`sim/profile_occ.py`, deformación plana,
+apoyada en la cara de la consola y sujeta por el canal). Sin los pies de apoyo esa franja no
+tocaba la consola y la tensión se disparaba: por eso existen.
 
-Iteraciones que salieron de las simulaciones:
-
-1. Dedos de agarre: margen entre capas 1,2× → raíz alta, redondeo y agujeros de alivio → 2,2× (PLA).
-2. Placa de 1,2 mm sobre la pantalla: con 30 kg se hundía hasta tocarla → panel nervado profundo.
-3. Esquinas vivas nervio/pared → rampas de 45° y refuerzos.
-4. Techo de capucha de 2 mm: 51 MPa → panal bajo el techo y techo de 2,6 mm.
-
-Limitaciones: análisis lineal y estático (no simula impactos ni fatiga), contacto con la
-consola modelado como apoyo simple, propiedades de material genéricas. Las medidas de la
+Limitaciones: análisis lineal y estático (sin impactos ni fatiga); la pantalla con piel fina
+no está pensada para aguantar una rodilla, sino rayones y presión ligera. Las medidas de la
 consola son en parte estimadas: imprime los probadores antes.
+
+## Inspiración
+
+[Semi-Pocketable Low-Profile Switch 2 Carrying Case](https://makerworld.com/models/1561878):
+garras en las rejillas superiores y pestillos en la inferior. Sus reseñas señalan agujeros
+de stick descentrados (piden moverlos ~1–2 mm hacia abajo), pestillos flojos, tapas de stick
+que se pierden y que aprieta + y −. Este diseño evita esos puntos con capuchas completas y
+un canal rígido.
 
 ## Medidas usadas
 

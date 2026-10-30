@@ -58,6 +58,10 @@ flap_hook = 1.6;    // engancha flap_hook - tol detrás de la consola (gancho a 
 flap_slot = 1.0;    // ranuras laterales que la separan de la pared
 flap_beam = 6.0;    // viga bajo la piel en la raíz de la solapa (alto; ancho = flap_beam + 2)
 flap_tab  = 3.0;    // pestaña para soltarla
+// pies de apoyo continuos sobre el marco (arriba bajo la viga de la solapa y abajo
+// junto al canal): la visera apoya en la consola también en esos tramos
+foot_t    = 1.6;
+foot_in   = 7.7;    // (solapa 0.3 con la viga) distancia del pie al borde de la consola (queda sobre el marco, fuera de la pantalla)
 // Paredes de centrado en los extremos (sin gancho)
 end_hy    = 20;     // medio alto (tramo recto del extremo)
 end_depth = 7;      // cuánto bajan por el canto del Joy-Con
@@ -243,6 +247,11 @@ module flap_relief() {
     translate([flap_x[0] + flap_slot/2, -rim - 2, -1]) cube([w - flap_slot, rim + 2, flap_root + 1]);
 }
 flap_fillet = 2.0;  // redondeo solapa/viga (sin él la raíz concentra la tensión: FEA)
+module feet() {
+    // arriba: bajo la viga, a lo largo de la solapa; abajo: a lo largo del canal
+    translate([flap_x[0] - 3, iH/2 - foot_in - foot_t, 0]) cube([flap_x[1] - flap_x[0] + 6, foot_t, top_z - eps]);
+    translate([-chan_hx, -iH/2 + foot_in, 0]) cube([2*chan_hx, foot_t, top_z - eps]);
+}
 module flap_beam() {   // raíz rígida: viga maciza bajo la piel a lo largo de la solapa
     w = flap_x[1] - flap_x[0] + 6;
     translate([flap_x[0] - 3, -flap_beam - 2, flap_root]) cube([w, flap_beam + 2, flap_beam]);
@@ -268,7 +277,7 @@ module light_ribs() {
     n = ceil(iL / light_rib_pitch);
     translate([0, 0, top_z - light_skin - light_rib_h]) linear_extrude(light_rib_h + eps)
         intersection() {
-            offset(delta=-8) screen_zone2d();   // no tocan las paredes (ni la solapa)
+            offset(delta=-10) screen_zone2d();  // no tocan las paredes, la solapa ni los pies
             union() {
                 for (i = [-n:n]) translate([i*light_rib_pitch - light_rib_t/2, -500]) square([light_rib_t, 1000]);
                 for (j = [-2:2]) translate([-500, j*light_rib_pitch - light_rib_t/2]) square([1000, light_rib_t]);
@@ -316,6 +325,7 @@ module visera() {
             visera_base();
             if (screen_style == "light") light_ribs();
             translate([0, iH/2, 0]) intersection() { flap_beam(); translate([0, -iH/2, 0]) linear_extrude(top_z) cover2d(-eps); }
+            feet();
             if (screen_style == "ribbed")
                 difference() {
                     translate([0, 0, screen_gap]) linear_extrude(top_z - skin_t - screen_gap + eps) core2d();

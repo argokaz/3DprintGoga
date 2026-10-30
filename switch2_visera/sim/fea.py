@@ -152,7 +152,8 @@ def run(case, matname, size):
     # (ahí la tensión es una singularidad numérica, no física)
     from scipy.spatial import cKDTree
     pinned = set()
-    for nodes, _ in list(bcs.values()) + list(disp.values()): pinned.update(int(n) for n in nodes)
+    for name, (nodes, _) in list(bcs.items()) + list(disp.items()):
+        if name != "PLANE": pinned.update(int(n) for n in nodes)   # la simetría no es una singularidad
     pinned.update(int(n) for n, _, _ in loads)
     far = np.ones(len(xyz), bool)
     if pinned:
@@ -240,6 +241,21 @@ def setup_flap(delta):
         return {"CUT": (cut, (1, 2, 3))}, [], {"TOOTH": (tooth, (2, delta))}, dict(delta_mm=delta, tooth_nodes=len(tooth))
     return f
 
+def setup_flap2d(delta):
+    # franja fina: deformación plana (ux = 0 en las dos caras), el cuerpo se sujeta
+    # por la cara de apoyo sobre la consola y el canal; el diente se abre delta
+    def f(xyz):
+        x0, x1 = xyz[:, 0].min(), xyz[:, 0].max()
+        faces = np.where((np.abs(xyz[:, 0] - x0) < 1e-3) | (np.abs(xyz[:, 0] - x1) < 1e-3))[0]
+        zb = -(T + tol); d = P("flap_hook")
+        hold = np.where(xyz[:, 1] < -iH/2 + 5)[0]                   # canal inferior fijo
+        face = np.where((np.abs(xyz[:, 2]) < 1e-3) & (np.abs(xyz[:, 1]) < H/2))[0]   # apoyo en la cara
+        tooth = np.where((xyz[:, 1] > iH/2 - d - 0.01) & (xyz[:, 1] < iH/2 - d + 0.15) &
+                         (np.abs(xyz[:, 2] - (zb - d)) < 0.3))[0]
+        return ({"PLANE": (faces, (1,)), "HOLD": (hold, (1, 2, 3)), "FACE": (face, (3,))}, [],
+                {"TOOTH": (tooth, (2, delta))}, dict(delta_mm=delta, face_nodes=len(face)))
+    return f
+
 CASES = {
     # rodilla / codo sobre el centro de la pantalla: 300 N ≈ 30 kg sobre Ø20 mm
     "screen_point":  dict(stl="occ", refine=(0, 0, 40), setup=setup_point(0, 0, 300), check=check_screen),
@@ -250,6 +266,7 @@ CASES = {
     # poner/quitar la visera: el gancho se abre lo que sobresale (clip_hook – tol)
     # cerrar la visera: el diente de la solapa se abre lo que engancha (flap_hook - tol)
     "flap_snap":     dict(stl="profile:30:70", setup=setup_flap(P("flap_hook") - tol)),
+    "flap_2d":       dict(stl="profile:49:51", setup=setup_flap2d(P("flap_hook") - tol)),
 }
 
 if __name__ == "__main__":
